@@ -1,5 +1,54 @@
 # Moodlet Technical Specification
-## Version 1.0 — Phase 1 MVP
+## Version 1.1 — Phase 1 MVP
+
+---
+
+## Implementation Status
+
+> **Last Updated:** December 17, 2025
+
+### ✅ Completed
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| **Project Structure** | ✅ Done | MVVM folders created (App, Models, Views, Services, Utilities) |
+| **Data Models** | ✅ Done | Companion, MoodEntry, UserProfile, Accessory, Background, ActivityTag |
+| **SwiftData Setup** | ✅ Done | ModelContainer with iCloud sync configured |
+| **Main TabView** | ✅ Done | iOS 26 Tab API with 4 tabs (Home, Insights, Shop, Settings) |
+| **Home View** | ✅ Done | Companion display, mood logging button, today's entries, stats |
+| **Mood Logging Sheet** | ✅ Done | 3-step flow (mood → tags → journal), points calculation |
+| **Insights View** | ✅ Done | Mood calendar, timeframe picker, stats summary, top activities |
+| **Mood Calendar** | ✅ Done | "Year in Pixels" style with month navigation |
+| **Shop View** | ✅ Done | Categories (accessories, backgrounds, species), placeholder inventory |
+| **Settings View** | ✅ Done | Notifications, export, data management, premium, about |
+| **Points Service** | ✅ Done | Point calculation, daily caps, streak bonuses |
+| **Streak Service** | ✅ Done | 48-hour grace period, milestone detection |
+| **Notification Service** | ✅ Done | Permission handling, scheduling, message variations |
+| **Export Service** | ✅ Done | CSV and JSON export |
+| **Color Palette** | ✅ Done | Brand colors applied (#2e8b57, #b08d57, #393d3f, #f3eff5, #fcfffc) |
+| **Constants** | ✅ Done | Points, streaks, shop prices, notification messages |
+| **Date Extensions** | ✅ Done | Helper methods for calendar operations |
+
+### 🚧 In Progress / Next Focus
+
+| Component | Priority | Notes |
+|-----------|----------|-------|
+| **Onboarding Flow** | HIGH | Egg hatching, companion creation, first mood log |
+| **Companion Assets** | HIGH | Placeholder currently; need actual sprites |
+| **Companion Animation System** | MEDIUM | Framework exists, needs sprite integration |
+| **StoreKit Integration** | MEDIUM | UI exists, needs App Store Connect setup |
+| **Accessibility** | MEDIUM | VoiceOver labels, Dynamic Type testing |
+| **Dark Mode** | LOW | Colors defined, needs testing |
+
+### 📋 Deferred to Phase 2+
+
+- Apple Intelligence / Foundation Models integration
+- Widgets (Home Screen, Lock Screen)
+- Siri Shortcuts / App Intents
+- Weekly review feature
+- Advanced insights (correlations, time-of-day patterns)
+- HealthKit integration
+- Watch app
 
 ---
 
@@ -7,9 +56,9 @@
 
 This document defines the technical architecture and implementation details for Moodlet Phase 1. It should be read alongside the Product Requirements Document (PRD) and used as the primary reference for development.
 
-**Target Platform:** iOS 18+ (optimized for iOS 26)  
-**Architecture:** MVVM with SwiftUI  
-**Data Layer:** SwiftData with iCloud Sync  
+**Target Platform:** iOS 26+
+**Architecture:** MVVM with SwiftUI
+**Data Layer:** SwiftData with iCloud Sync
 **Language:** Swift 6
 
 ---
@@ -891,10 +940,17 @@ enum MoodletError: LocalizedError {
 
 ## Open Items for Development
 
-- [ ] Create default shop inventory (10+ accessories, 5+ backgrounds)
-- [ ] Finalize notification copy library (20+ variations)
-- [ ] Confirm companion base colors available during egg selection
-- [ ] Define weekly review flow and content
+- [x] ~~Create default shop inventory (10+ accessories, 5+ backgrounds)~~ — Done (10 accessories, 5 backgrounds seeded)
+- [x] ~~Finalize notification copy library (20+ variations)~~ — Done (15+ messages across morning/afternoon/evening/neutral)
+- [ ] Confirm companion base colors available during egg selection — Needs design input
+- [ ] Define weekly review flow and content — Deferred to post-onboarding
+- [ ] Create onboarding flow views (WelcomeView, EggHatchingView, etc.)
+- [ ] Add companion sprite assets (Cat minimum for MVP)
+- [ ] Implement companion animation controller with real assets
+- [ ] Set up App Store Connect for StoreKit testing
+- [ ] Add VoiceOver accessibility labels
+- [ ] Test Dynamic Type scaling
+- [ ] Implement haptic feedback on interactions
 
 ---
 
@@ -902,4 +958,5 @@ enum MoodletError: LocalizedError {
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.0 | TBD | Initial technical specification |
+| 1.0 | Dec 16, 2025 | Initial technical specification |
+| 1.1 | Dec 17, 2025 | Added implementation status; marked completed items |

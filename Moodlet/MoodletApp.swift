@@ -2,8 +2,6 @@
 //  MoodletApp.swift
 //  Moodlet
 //
-//  Created by Reed Rawlings on 12/16/25.
-//
 
 import SwiftUI
 import SwiftData
@@ -12,9 +10,18 @@ import SwiftData
 struct MoodletApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            Item.self,
+            Companion.self,
+            MoodEntry.self,
+            UserProfile.self,
+            Accessory.self,
+            Background.self
         ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+
+        let modelConfiguration = ModelConfiguration(
+            schema: schema,
+            isStoredInMemoryOnly: false,
+            cloudKitDatabase: .automatic
+        )
 
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
@@ -26,7 +33,26 @@ struct MoodletApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .onAppear {
+                    setupInitialData()
+                }
         }
         .modelContainer(sharedModelContainer)
+    }
+
+    private func setupInitialData() {
+        let context = sharedModelContainer.mainContext
+
+        // Ensure user profile exists
+        let profileDescriptor = FetchDescriptor<UserProfile>()
+        do {
+            let profiles = try context.fetch(profileDescriptor)
+            if profiles.isEmpty {
+                let profile = UserProfile()
+                context.insert(profile)
+            }
+        } catch {
+            print("Error checking user profile: \(error)")
+        }
     }
 }
