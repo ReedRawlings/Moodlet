@@ -58,11 +58,6 @@ struct HomeView: View {
             }
             .background(Color.moodletBackground)
             .navigationTitle("Moodlet")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    pointsBadge
-                }
-            }
         }
     }
 
@@ -72,7 +67,8 @@ struct HomeView: View {
         VStack(spacing: MoodletTheme.spacing) {
             CompanionView(
                 companion: companion,
-                moodTrend: recentMoodTrend
+                moodTrend: recentMoodTrend,
+                points: userProfile?.totalPoints ?? 0
             )
             .frame(height: 280)
 
@@ -113,7 +109,6 @@ struct HomeView: View {
             .background(Color.moodletPrimary)
             .clipShape(RoundedRectangle(cornerRadius: MoodletTheme.cornerRadius))
         }
-        .glassEffect(.regular.interactive())
     }
 
     // MARK: - Today's Entries
@@ -152,21 +147,6 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Points Badge
-
-    private var pointsBadge: some View {
-        HStack(spacing: 4) {
-            Image(systemName: "star.fill")
-                .foregroundStyle(Color.moodletAccent)
-            Text("\(userProfile?.totalPoints ?? 0)")
-                .fontWeight(.semibold)
-        }
-        .font(.subheadline)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background(Color.moodletAccent.opacity(0.15))
-        .clipShape(Capsule())
-    }
 }
 
 // MARK: - Supporting Views

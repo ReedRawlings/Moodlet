@@ -8,6 +8,7 @@ import SwiftUI
 struct CompanionView: View {
     let companion: Companion?
     let moodTrend: Mood?
+    var points: Int = 0
 
     @State private var isAnimating = false
 
@@ -23,12 +24,16 @@ struct CompanionView: View {
     }
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .topTrailing) {
             // Background
             backgroundView
 
             // Companion
             companionDisplay
+
+            // Points badge overlay
+            pointsBadge
+                .padding(12)
         }
         .clipShape(RoundedRectangle(cornerRadius: MoodletTheme.largeCornerRadius))
         .onAppear {
@@ -49,6 +54,22 @@ struct CompanionView: View {
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
+    }
+
+    // MARK: - Points Badge
+
+    private var pointsBadge: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "star.fill")
+                .foregroundStyle(Color.moodletAccent)
+            Text("\(points)")
+                .fontWeight(.semibold)
+        }
+        .font(.subheadline)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(Color.moodletSurface.opacity(0.9))
+        .clipShape(Capsule())
     }
 
     // MARK: - Companion Display

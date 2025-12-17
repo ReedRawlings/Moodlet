@@ -15,7 +15,7 @@ struct MoodLoggingSheet: View {
     @State private var selectedTags: Set<String> = []
     @State private var journalNote: String = ""
     @State private var currentStep: LoggingStep = .mood
-    @State private var journalPrompts: [String] = JournalPrompts.randomPrompts()
+    @State private var journalPrompts: [String] = JournalPrompts.randomPrompts(count: 2)
 
     private var userProfile: UserProfile? {
         userProfiles.first
@@ -30,9 +30,6 @@ struct MoodLoggingSheet: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Progress indicator
-                progressIndicator
-
                 // Content
                 ScrollView {
                     VStack(spacing: MoodletTheme.largeSpacing) {
@@ -51,7 +48,8 @@ struct MoodLoggingSheet: View {
                 // Action buttons
                 actionButtons
             }
-            .background(Color.moodletBackground)
+            .background(.clear)
+            .scrollContentBackground(.hidden)
             .navigationTitle(stepTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -71,7 +69,7 @@ struct MoodLoggingSheet: View {
         switch currentStep {
         case .mood: return "How are you feeling?"
         case .activities: return "What's been part of your day?"
-        case .journal: return "Anything to add?"
+        case .journal: return "Mood Journal"
         }
     }
 
@@ -97,11 +95,7 @@ struct MoodLoggingSheet: View {
                 .font(.subheadline)
                 .foregroundStyle(Color.moodletTextSecondary)
 
-            LazyVGrid(columns: [
-                GridItem(.flexible()),
-                GridItem(.flexible()),
-                GridItem(.flexible())
-            ], spacing: MoodletTheme.spacing) {
+            HStack(spacing: MoodletTheme.smallSpacing) {
                 ForEach(Mood.allCases) { mood in
                     MoodButton(
                         mood: mood,
@@ -147,10 +141,6 @@ struct MoodLoggingSheet: View {
 
     private var journalView: some View {
         VStack(alignment: .leading, spacing: MoodletTheme.spacing) {
-            Text("Reflection (optional, +2 points)")
-                .font(.subheadline)
-                .foregroundStyle(Color.moodletTextSecondary)
-
             // Prompts
             VStack(alignment: .leading, spacing: MoodletTheme.smallSpacing) {
                 Text("Prompts to consider:")
@@ -227,7 +217,7 @@ struct MoodLoggingSheet: View {
             .disabled(selectedMood == nil)
         }
         .padding()
-        .background(Color.moodletBackground)
+        .background(.clear)
     }
 
     // MARK: - Navigation
@@ -305,29 +295,23 @@ struct MoodButton: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 8) {
+            VStack(spacing: 4) {
                 ZStack {
                     Circle()
                         .fill(isSelected ? mood.color : mood.color.opacity(0.2))
-                        .frame(width: 64, height: 64)
+                        .frame(width: 48, height: 48)
 
                     Image(systemName: mood.icon)
-                        .font(.title)
+                        .font(.title3)
                         .foregroundStyle(isSelected ? .white : mood.color)
                 }
+                .scaleEffect(isSelected ? 1.1 : 1.0)
 
                 Text(mood.displayName)
-                    .font(.caption)
+                    .font(.caption2)
                     .fontWeight(isSelected ? .semibold : .regular)
                     .foregroundStyle(isSelected ? Color.moodletTextPrimary : Color.moodletTextSecondary)
             }
-            .padding()
-            .background(isSelected ? Color.moodletSurface : Color.clear)
-            .clipShape(RoundedRectangle(cornerRadius: MoodletTheme.cornerRadius))
-            .overlay(
-                RoundedRectangle(cornerRadius: MoodletTheme.cornerRadius)
-                    .stroke(isSelected ? mood.color : Color.clear, lineWidth: 2)
-            )
         }
         .buttonStyle(.plain)
     }
