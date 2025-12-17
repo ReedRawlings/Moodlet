@@ -109,7 +109,6 @@ struct HomeView: View {
             .background(Color.moodletPrimary)
             .clipShape(RoundedRectangle(cornerRadius: MoodletTheme.cornerRadius))
         }
-        .glassEffect(.regular.interactive())
     }
 
     // MARK: - Today's Entries
