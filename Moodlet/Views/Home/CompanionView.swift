@@ -9,6 +9,8 @@ struct CompanionView: View {
     let companion: Companion?
     let moodTrend: Mood?
     var points: Int = 0
+    var streak: Int = 0
+    var entries: Int = 0
 
     @State private var isAnimating = false
 
@@ -24,15 +26,15 @@ struct CompanionView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
+        ZStack(alignment: .top) {
             // Background
             backgroundView
 
             // Companion
             companionDisplay
 
-            // Points badge overlay
-            pointsBadge
+            // Stats overlay row
+            statsOverlay
                 .padding(12)
         }
         .clipShape(RoundedRectangle(cornerRadius: MoodletTheme.largeCornerRadius))
@@ -56,17 +58,32 @@ struct CompanionView: View {
         )
     }
 
-    // MARK: - Points Badge
+    // MARK: - Stats Overlay
 
-    private var pointsBadge: some View {
+    private var statsOverlay: some View {
+        HStack(spacing: 12) {
+            // Streak
+            statBadge(icon: "flame.fill", value: "\(streak)", color: .orange)
+
+            // Entries
+            statBadge(icon: "checkmark.circle.fill", value: "\(entries)", color: .moodletPrimary)
+
+            Spacer()
+
+            // Points
+            statBadge(icon: "star.fill", value: "\(points)", color: .moodletAccent)
+        }
+    }
+
+    private func statBadge(icon: String, value: String, color: Color) -> some View {
         HStack(spacing: 4) {
-            Image(systemName: "star.fill")
-                .foregroundStyle(Color.moodletAccent)
-            Text("\(points)")
+            Image(systemName: icon)
+                .foregroundStyle(color)
+            Text(value)
                 .fontWeight(.semibold)
         }
         .font(.subheadline)
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .background(Color.moodletSurface.opacity(0.9))
         .clipShape(Capsule())
