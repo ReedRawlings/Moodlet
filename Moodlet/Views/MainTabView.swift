@@ -59,7 +59,6 @@ struct MainTabView: View {
             MoodLoggingSheet()
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
-                .presentationBackground(.regularMaterial)
         }
     }
 }
