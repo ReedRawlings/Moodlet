@@ -6,10 +6,47 @@
 import SwiftUI
 import SwiftData
 
+// MARK: - Mood Logging Overlay (Centered)
+
+struct MoodLoggingOverlay: View {
+    @Binding var isPresented: Bool
+
+    var body: some View {
+        ZStack {
+            // Dimmed background
+            Color.black.opacity(0.4)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        isPresented = false
+                    }
+                }
+
+            // Centered card
+            MoodLoggingSheet(dismiss: {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    isPresented = false
+                }
+            })
+            .frame(maxWidth: 360)
+            .background(
+                RoundedRectangle(cornerRadius: MoodletTheme.largeCornerRadius)
+                    .fill(.regularMaterial)
+                    .shadow(color: .black.opacity(0.2), radius: 20, y: 10)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: MoodletTheme.largeCornerRadius))
+            .padding(.horizontal, 24)
+        }
+    }
+}
+
+// MARK: - Mood Logging Sheet
+
 struct MoodLoggingSheet: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.dismiss) private var dismiss
     @Query private var userProfiles: [UserProfile]
+
+    var dismiss: () -> Void
 
     @State private var selectedMood: Mood?
     @State private var selectedTags: Set<String> = []
@@ -28,39 +65,53 @@ struct MoodLoggingSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                // Content
-                ScrollView {
-                    VStack(spacing: MoodletTheme.largeSpacing) {
-                        switch currentStep {
-                        case .mood:
-                            moodSelectionView
-                        case .activities:
-                            activitySelectionView
-                        case .journal:
-                            journalView
-                        }
-                    }
-                    .padding()
-                }
+        VStack(spacing: 0) {
+            // Header
+            headerView
 
-                // Action buttons
-                actionButtons
-            }
-            .background(.clear)
-            .scrollContentBackground(.hidden)
-            .navigationTitle(stepTitle)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
+            // Content
+            ScrollView {
+                VStack(spacing: MoodletTheme.largeSpacing) {
+                    switch currentStep {
+                    case .mood:
+                        moodSelectionView
+                    case .activities:
+                        activitySelectionView
+                    case .journal:
+                        journalView
                     }
-                    .foregroundStyle(Color.moodletTextSecondary)
                 }
+                .padding()
             }
+            .frame(maxHeight: currentStep == .journal ? 400 : nil)
+
+            // Action buttons
+            actionButtons
         }
+    }
+
+    // MARK: - Header View
+
+    private var headerView: some View {
+        HStack {
+            Button("Cancel") {
+                dismiss()
+            }
+            .foregroundStyle(Color.moodletTextSecondary)
+
+            Spacer()
+
+            Text(stepTitle)
+                .font(.headline)
+                .foregroundStyle(Color.moodletTextPrimary)
+
+            Spacer()
+
+            // Invisible button for balance
+            Button("Cancel") {}
+                .opacity(0)
+        }
+        .padding()
     }
 
     // MARK: - Step Title
@@ -90,20 +141,14 @@ struct MoodLoggingSheet: View {
     // MARK: - Mood Selection
 
     private var moodSelectionView: some View {
-        VStack(spacing: MoodletTheme.largeSpacing) {
-            Text("Tap to select your mood")
-                .font(.subheadline)
-                .foregroundStyle(Color.moodletTextSecondary)
-
-            HStack(spacing: MoodletTheme.smallSpacing) {
-                ForEach(Mood.allCases) { mood in
-                    MoodButton(
-                        mood: mood,
-                        isSelected: selectedMood == mood
-                    ) {
-                        withAnimation(.spring(response: 0.3)) {
-                            selectedMood = mood
-                        }
+        HStack(spacing: MoodletTheme.spacing) {
+            ForEach(Mood.allCases) { mood in
+                MoodButton(
+                    mood: mood,
+                    isSelected: selectedMood == mood
+                ) {
+                    withAnimation(.spring(response: 0.3)) {
+                        selectedMood = mood
                     }
                 }
             }
@@ -158,8 +203,12 @@ struct MoodLoggingSheet: View {
                             .foregroundStyle(Color.moodletPrimary)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
-                            .background(Color.moodletPrimary.opacity(0.1))
+                            .background(Color.moodletPrimary.opacity(0.2))
                             .clipShape(Capsule())
+                            .overlay(
+                                Capsule()
+                                    .stroke(Color.moodletPrimary.opacity(0.3), lineWidth: 1)
+                            )
                     }
                 }
             }
@@ -295,20 +344,20 @@ struct MoodButton: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 4) {
+            VStack(spacing: 6) {
                 ZStack {
                     Circle()
                         .fill(isSelected ? mood.color : mood.color.opacity(0.2))
-                        .frame(width: 48, height: 48)
+                        .frame(width: 56, height: 56)
 
                     Image(systemName: mood.icon)
-                        .font(.title3)
+                        .font(.title2)
                         .foregroundStyle(isSelected ? .white : mood.color)
                 }
                 .scaleEffect(isSelected ? 1.1 : 1.0)
 
                 Text(mood.displayName)
-                    .font(.caption2)
+                    .font(.caption)
                     .fontWeight(isSelected ? .semibold : .regular)
                     .foregroundStyle(isSelected ? Color.moodletTextPrimary : Color.moodletTextSecondary)
             }
@@ -394,7 +443,7 @@ struct FlowLayout: Layout {
 }
 
 #Preview {
-    MoodLoggingSheet()
+    MoodLoggingOverlay(isPresented: .constant(true))
         .modelContainer(for: [
             Companion.self,
             MoodEntry.self,
