@@ -191,7 +191,7 @@ Your Moodlet isn't a pet you feed with productivity. It's a companion that shows
 ### 1.6 Technical Requirements (Phase 1)
 
 - **Platform**: iOS (SwiftUI)
-- **Minimum iOS**: 16.0+
+- **Minimum iOS**: 26.0+
 - **Data storage**: SwiftData (local-first)
 - **No account required** to start
 - **Notifications**: 
