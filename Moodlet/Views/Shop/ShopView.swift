@@ -53,7 +53,7 @@ struct ShopView: View {
             .background(Color.moodletBackground)
             .navigationTitle("Shop")
             .sheet(item: $selectedItem) { item in
-                ItemDetailSheet(item: item, userProfile: userProfile)
+                ItemDetailSheet(item: item)
             }
         }
         .onAppear {
@@ -516,8 +516,15 @@ struct SpeciesCard: View {
 
 struct ItemDetailSheet: View {
     let item: ShopItem
-    let userProfile: UserProfile?
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Query private var userProfiles: [UserProfile]
+
+    @State private var purchaseCompleted = false
+
+    private var userProfile: UserProfile? {
+        userProfiles.first
+    }
 
     var body: some View {
         NavigationStack {
@@ -551,10 +558,18 @@ struct ItemDetailSheet: View {
                 Spacer()
 
                 // Purchase button
-                if !isOwned {
+                if purchaseCompleted || isOwned {
+                    VStack(spacing: 8) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.largeTitle)
+                            .foregroundStyle(Color.moodletPrimary)
+                        Text("You own this item!")
+                            .font(.headline)
+                            .foregroundStyle(Color.moodletPrimary)
+                    }
+                } else {
                     Button {
-                        // Purchase logic
-                        dismiss()
+                        performPurchase()
                     } label: {
                         HStack {
                             Text("Purchase")
@@ -575,10 +590,6 @@ struct ItemDetailSheet: View {
                             .font(.caption)
                             .foregroundStyle(Color.moodletTextSecondary)
                     }
-                } else {
-                    Text("You own this item!")
-                        .font(.headline)
-                        .foregroundStyle(Color.moodletPrimary)
                 }
             }
             .padding()
@@ -593,6 +604,30 @@ struct ItemDetailSheet: View {
             }
         }
         .presentationDetents([.medium])
+    }
+
+    private func performPurchase() {
+        guard let profile = userProfile else { return }
+        guard profile.totalPoints >= itemPrice else { return }
+
+        // Deduct points
+        profile.totalPoints -= itemPrice
+
+        // Add item to unlocked list
+        switch item {
+        case .accessory(let accessory):
+            if !profile.unlockedAccessoryIDs.contains(accessory.id) {
+                profile.unlockedAccessoryIDs.append(accessory.id)
+            }
+        case .background(let background):
+            if !profile.unlockedBackgroundIDs.contains(background.id) {
+                profile.unlockedBackgroundIDs.append(background.id)
+            }
+        }
+
+        withAnimation {
+            purchaseCompleted = true
+        }
     }
 
     private var itemName: String {
