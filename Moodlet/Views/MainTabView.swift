@@ -55,11 +55,13 @@ struct MainTabView: View {
             }
         }
         .tint(.moodletPrimary)
-        .sheet(isPresented: $showMoodLogging) {
-            MoodLoggingSheet()
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
+        .overlay {
+            if showMoodLogging {
+                MoodLoggingOverlay(isPresented: $showMoodLogging)
+                    .transition(.opacity)
+            }
         }
+        .animation(.easeInOut(duration: 0.25), value: showMoodLogging)
     }
 }
 

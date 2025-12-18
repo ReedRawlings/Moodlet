@@ -68,7 +68,9 @@ struct HomeView: View {
             CompanionView(
                 companion: companion,
                 moodTrend: recentMoodTrend,
-                points: userProfile?.totalPoints ?? 0
+                points: userProfile?.totalPoints ?? 0,
+                streak: userProfile?.currentStreak ?? 0,
+                entries: todaysEntries.count
             )
             .frame(height: 280)
 
