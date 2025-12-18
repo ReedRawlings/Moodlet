@@ -22,20 +22,24 @@ struct MoodLoggingOverlay: View {
                     }
                 }
 
-            // Centered card
-            MoodLoggingSheet(dismiss: {
-                withAnimation(.easeInOut(duration: 0.25)) {
-                    isPresented = false
-                }
-            })
-            .frame(maxWidth: 360)
-            .background(
-                RoundedRectangle(cornerRadius: MoodletTheme.largeCornerRadius)
-                    .fill(.regularMaterial)
-                    .shadow(color: .black.opacity(0.2), radius: 20, y: 10)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: MoodletTheme.largeCornerRadius))
-            .padding(.horizontal, 24)
+            // Centered card - constrained to content size
+            VStack {
+                Spacer()
+                MoodLoggingSheet(dismiss: {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        isPresented = false
+                    }
+                })
+                .frame(maxWidth: 340)
+                .background(
+                    RoundedRectangle(cornerRadius: MoodletTheme.largeCornerRadius)
+                        .fill(.regularMaterial)
+                        .shadow(color: .black.opacity(0.2), radius: 20, y: 10)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: MoodletTheme.largeCornerRadius))
+                Spacer()
+            }
+            .padding(.horizontal, 32)
         }
     }
 }
@@ -69,21 +73,24 @@ struct MoodLoggingSheet: View {
             // Header
             headerView
 
-            // Content
-            ScrollView {
-                VStack(spacing: MoodletTheme.largeSpacing) {
-                    switch currentStep {
-                    case .mood:
-                        moodSelectionView
-                    case .activities:
-                        activitySelectionView
-                    case .journal:
-                        journalView
-                    }
+            // Content - different sizing for each step
+            switch currentStep {
+            case .mood:
+                moodSelectionView
+                    .padding()
+            case .activities:
+                ScrollView {
+                    activitySelectionView
+                        .padding()
                 }
-                .padding()
+                .frame(height: 180)
+            case .journal:
+                ScrollView {
+                    journalView
+                        .padding()
+                }
+                .frame(height: 280)
             }
-            .frame(maxHeight: currentStep == .journal ? 400 : nil)
 
             // Action buttons
             actionButtons
@@ -111,7 +118,8 @@ struct MoodLoggingSheet: View {
             Button("Cancel") {}
                 .opacity(0)
         }
-        .padding()
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
     }
 
     // MARK: - Step Title
@@ -239,7 +247,7 @@ struct MoodLoggingSheet: View {
                     Text("Back")
                         .fontWeight(.medium)
                         .frame(maxWidth: .infinity)
-                        .padding()
+                        .padding(.vertical, 14)
                         .background(Color.moodletSurface)
                         .foregroundStyle(Color.moodletTextPrimary)
                         .clipShape(RoundedRectangle(cornerRadius: MoodletTheme.cornerRadius))
@@ -258,15 +266,15 @@ struct MoodLoggingSheet: View {
                 Text(currentStep == .journal ? "Save" : (currentStep == .activities ? "Next" : "Continue"))
                     .fontWeight(.semibold)
                     .frame(maxWidth: .infinity)
-                    .padding()
+                    .padding(.vertical, 14)
                     .background(selectedMood != nil ? Color.moodletPrimary : Color.moodletPrimary.opacity(0.5))
                     .foregroundStyle(.white)
                     .clipShape(RoundedRectangle(cornerRadius: MoodletTheme.cornerRadius))
             }
             .disabled(selectedMood == nil)
         }
-        .padding()
-        .background(.clear)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 
     // MARK: - Navigation
