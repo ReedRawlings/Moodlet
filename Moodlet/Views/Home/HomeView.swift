@@ -50,9 +50,6 @@ struct HomeView: View {
                     if !todaysEntries.isEmpty {
                         todaysEntriesSection
                     }
-
-                    // Stats Overview
-                    statsOverview
                 }
                 .padding()
             }
@@ -124,28 +121,6 @@ struct HomeView: View {
             ForEach(todaysEntries) { entry in
                 MoodEntryRow(entry: entry)
             }
-        }
-    }
-
-    // MARK: - Stats Overview
-
-    private var statsOverview: some View {
-        HStack(spacing: MoodletTheme.spacing) {
-            StatCard(
-                title: "Streak",
-                value: "\(userProfile?.currentStreak ?? 0)",
-                subtitle: "days",
-                icon: "flame.fill",
-                color: .orange
-            )
-
-            StatCard(
-                title: "Today",
-                value: "\(todaysEntries.count)",
-                subtitle: "entries",
-                icon: "checkmark.circle.fill",
-                color: .moodletPrimary
-            )
         }
     }
 

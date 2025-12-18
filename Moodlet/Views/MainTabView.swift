@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 enum AppTab: Int, CaseIterable, Identifiable {
     case home = 0

@@ -459,7 +459,7 @@ struct AboutView: View {
 
                     Text("Check in with yourself. Your Moodlet reflects how you're really doing.")
                         .font(.subheadline)
-                        .fontStyle(.italic)
+                        .italic()
                         .foregroundStyle(Color.moodletPrimary)
                 }
                 .padding()
