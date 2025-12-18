@@ -73,31 +73,28 @@ struct MoodLoggingSheet: View {
             // Header
             headerView
 
-            // Content - use ScrollView only for steps that need it
-            Group {
-                switch currentStep {
-                case .mood:
-                    moodSelectionView
+            // Content - different sizing for each step
+            switch currentStep {
+            case .mood:
+                moodSelectionView
+                    .padding()
+            case .activities:
+                ScrollView {
+                    activitySelectionView
                         .padding()
-                case .activities:
-                    ScrollView {
-                        activitySelectionView
-                            .padding()
-                    }
-                    .frame(maxHeight: 200)
-                case .journal:
-                    ScrollView {
-                        journalView
-                            .padding()
-                    }
-                    .frame(maxHeight: 300)
                 }
+                .frame(height: 180)
+            case .journal:
+                ScrollView {
+                    journalView
+                        .padding()
+                }
+                .frame(height: 280)
             }
 
             // Action buttons
             actionButtons
         }
-        .fixedSize(horizontal: false, vertical: true)
     }
 
     // MARK: - Header View
