@@ -11,18 +11,38 @@ import SwiftUI
 final class MoodEntry {
     @Attribute(.unique) var id: UUID
     var mood: Mood
+    var emotionId: String?
     var timestamp: Date
     var note: String?
     var activityTags: [String]
+    var peopleTags: [String]
     var earnedPoints: Bool
 
-    init(mood: Mood, note: String? = nil, activityTags: [String] = [], earnedPoints: Bool = false) {
+    init(
+        mood: Mood,
+        emotionId: String? = nil,
+        note: String? = nil,
+        activityTags: [String] = [],
+        peopleTags: [String] = [],
+        earnedPoints: Bool = false
+    ) {
         self.id = UUID()
         self.mood = mood
+        self.emotionId = emotionId
         self.timestamp = Date()
         self.note = note
         self.activityTags = activityTags
+        self.peopleTags = peopleTags
         self.earnedPoints = earnedPoints
+    }
+
+    // Get the emotion option for display (uses emotionId if available, falls back to mood)
+    var emotionOption: EmotionOption? {
+        if let emotionId = emotionId {
+            return EmotionOption.find(byId: emotionId)
+        }
+        // Fallback: map Mood to default emotion
+        return EmotionOption.find(byId: mood.rawValue)
     }
 }
 

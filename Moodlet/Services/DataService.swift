@@ -169,6 +169,35 @@ final class DataService {
         return true
     }
 
+    // MARK: - Equipping
+
+    func equipAccessory(_ accessory: Accessory, to companion: Companion) {
+        guard !companion.equippedAccessories.contains(where: { $0.id == accessory.id }) else { return }
+        companion.equippedAccessories.append(accessory)
+    }
+
+    func unequipAccessory(_ accessory: Accessory, from companion: Companion) {
+        companion.equippedAccessories.removeAll { $0.id == accessory.id }
+    }
+
+    func equipBackground(_ background: Background, to companion: Companion) {
+        companion.equippedBackground = background
+    }
+
+    func unequipBackground(from companion: Companion) {
+        companion.equippedBackground = nil
+    }
+
+    func isAccessoryEquipped(_ accessory: Accessory, on companion: Companion?) -> Bool {
+        guard let companion = companion else { return false }
+        return companion.equippedAccessories.contains { $0.id == accessory.id }
+    }
+
+    func isBackgroundEquipped(_ background: Background, on companion: Companion?) -> Bool {
+        guard let companion = companion else { return false }
+        return companion.equippedBackground?.id == background.id
+    }
+
     // MARK: - Delete All Data
 
     func deleteAllData() {

@@ -44,8 +44,9 @@
 - [x] Mood calendar ("Year in Pixels")
 - [x] Month navigation
 - [x] Timeframe filtering (Week/Month/Year)
-- [x] Average mood calculation
-- [x] Top activities summary
+- [x] Mood & Activities relationship view
+- [x] Mood & People relationship view
+- [x] Moods by time of day
 - [x] Recent entries list
 
 **Settings**

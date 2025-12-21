@@ -23,6 +23,35 @@ final class UserProfile {
     var unlockedAccessoryIDs: [UUID]
     var unlockedBackgroundIDs: [UUID]
     var unlockedSpecies: [String]
+    var earnedBadges: [String: Date]
+
+    // Check-in customization
+    var selectedEmotionIds: [String]
+    var selectedActivityIds: [String]
+    var selectedPeopleIds: [String]
+    var customActivitiesData: Data?
+    var customPeopleData: Data?
+
+    // Computed properties for custom items
+    var customActivities: [ActivityOption] {
+        get {
+            guard let data = customActivitiesData else { return [] }
+            return (try? JSONDecoder().decode([ActivityOption].self, from: data)) ?? []
+        }
+        set {
+            customActivitiesData = try? JSONEncoder().encode(newValue)
+        }
+    }
+
+    var customPeople: [PeopleOption] {
+        get {
+            guard let data = customPeopleData else { return [] }
+            return (try? JSONDecoder().decode([PeopleOption].self, from: data)) ?? []
+        }
+        set {
+            customPeopleData = try? JSONEncoder().encode(newValue)
+        }
+    }
 
     init() {
         self.id = UUID()
@@ -39,6 +68,12 @@ final class UserProfile {
         self.unlockedAccessoryIDs = []
         self.unlockedBackgroundIDs = []
         self.unlockedSpecies = [CompanionSpecies.cat.rawValue]
+        self.earnedBadges = [:]
+        self.selectedEmotionIds = EmotionOption.defaultSelection
+        self.selectedActivityIds = ActivityOption.defaultSelection
+        self.selectedPeopleIds = PeopleOption.defaultSelection
+        self.customActivitiesData = nil
+        self.customPeopleData = nil
     }
 
     func hasUnlockedSpecies(_ species: CompanionSpecies) -> Bool {
@@ -51,5 +86,18 @@ final class UserProfile {
 
     func hasUnlockedBackground(_ backgroundID: UUID) -> Bool {
         unlockedBackgroundIDs.contains(backgroundID)
+    }
+
+    func hasBadge(_ badge: Badge) -> Bool {
+        earnedBadges[badge.rawValue] != nil
+    }
+
+    func earnBadge(_ badge: Badge) {
+        guard !hasBadge(badge) else { return }
+        earnedBadges[badge.rawValue] = Date()
+    }
+
+    func badgeEarnedDate(_ badge: Badge) -> Date? {
+        earnedBadges[badge.rawValue]
     }
 }

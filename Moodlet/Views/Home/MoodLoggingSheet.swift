@@ -30,7 +30,7 @@ struct MoodLoggingOverlay: View {
                         isPresented = false
                     }
                 })
-                .frame(maxWidth: 340)
+                .frame(maxWidth: 380)
                 .background(
                     RoundedRectangle(cornerRadius: MoodletTheme.largeCornerRadius)
                         .fill(.regularMaterial)
@@ -49,22 +49,59 @@ struct MoodLoggingOverlay: View {
 struct MoodLoggingSheet: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var userProfiles: [UserProfile]
+    @Query private var moodEntries: [MoodEntry]
+    @Query private var companions: [Companion]
 
     var dismiss: () -> Void
 
-    @State private var selectedMood: Mood?
+    @State private var selectedEmotion: EmotionOption?
     @State private var selectedTags: Set<String> = []
+    @State private var selectedPeople: Set<String> = []
     @State private var journalNote: String = ""
-    @State private var currentStep: LoggingStep = .mood
+    @State private var currentStep: LoggingStep = .moodAndActivities
     @State private var journalPrompts: [String] = JournalPrompts.randomPrompts(count: 2)
 
     private var userProfile: UserProfile? {
         userProfiles.first
     }
 
+    private var companion: Companion? {
+        companions.first
+    }
+
+    private let badgeService = BadgeService()
+    private let streakService = StreakService()
+
+    // Get filtered emotions based on user preferences
+    private var availableEmotions: [EmotionOption] {
+        guard let profile = userProfile else {
+            return EmotionOption.presets.filter { EmotionOption.defaultSelection.contains($0.id) }
+        }
+        return EmotionOption.presets.filter { profile.selectedEmotionIds.contains($0.id) }
+    }
+
+    // Get filtered activities based on user preferences
+    private var availableActivities: [ActivityOption] {
+        guard let profile = userProfile else {
+            return ActivityOption.presets
+        }
+        let presets = ActivityOption.presets.filter { profile.selectedActivityIds.contains($0.id) }
+        let custom = profile.customActivities.filter { profile.selectedActivityIds.contains($0.id) }
+        return presets + custom
+    }
+
+    // Get filtered people options based on user preferences
+    private var availablePeople: [PeopleOption] {
+        guard let profile = userProfile else {
+            return PeopleOption.presets
+        }
+        let presets = PeopleOption.presets.filter { profile.selectedPeopleIds.contains($0.id) }
+        let custom = profile.customPeople.filter { profile.selectedPeopleIds.contains($0.id) }
+        return presets + custom
+    }
+
     enum LoggingStep {
-        case mood
-        case activities
+        case moodAndActivities
         case journal
     }
 
@@ -75,15 +112,12 @@ struct MoodLoggingSheet: View {
 
             // Content - different sizing for each step
             switch currentStep {
-            case .mood:
-                moodSelectionView
-                    .padding()
-            case .activities:
+            case .moodAndActivities:
                 ScrollView {
-                    activitySelectionView
+                    moodAndActivitiesView
                         .padding()
                 }
-                .frame(height: 180)
+                .frame(height: 400)
             case .journal:
                 ScrollView {
                     journalView
@@ -126,8 +160,7 @@ struct MoodLoggingSheet: View {
 
     private var stepTitle: String {
         switch currentStep {
-        case .mood: return "How are you feeling?"
-        case .activities: return "What's been part of your day?"
+        case .moodAndActivities: return "How are you feeling?"
         case .journal: return "Mood Journal"
         }
     }
@@ -146,42 +179,67 @@ struct MoodLoggingSheet: View {
         .padding(.top)
     }
 
-    // MARK: - Mood Selection
+    // MARK: - Mood and Activities Combined View
 
-    private var moodSelectionView: some View {
-        HStack(spacing: MoodletTheme.spacing) {
-            ForEach(Mood.allCases) { mood in
-                MoodButton(
-                    mood: mood,
-                    isSelected: selectedMood == mood
-                ) {
-                    withAnimation(.spring(response: 0.3)) {
-                        selectedMood = mood
+    private var moodAndActivitiesView: some View {
+        VStack(spacing: MoodletTheme.largeSpacing) {
+            // Emotion Selection
+            FlowLayout(spacing: MoodletTheme.smallSpacing) {
+                ForEach(availableEmotions) { emotion in
+                    EmotionButton(
+                        emotion: emotion,
+                        isSelected: selectedEmotion?.id == emotion.id
+                    ) {
+                        withAnimation(.spring(response: 0.3)) {
+                            selectedEmotion = emotion
+                        }
                     }
                 }
             }
-        }
-    }
+            .padding(.horizontal, MoodletTheme.smallSpacing)
 
-    // MARK: - Activity Selection
+            // People Selection
+            VStack(spacing: MoodletTheme.spacing) {
+                Text("Who are you with?")
+                    .font(.subheadline)
+                    .foregroundStyle(Color.moodletTextSecondary)
 
-    private var activitySelectionView: some View {
-        VStack(spacing: MoodletTheme.largeSpacing) {
-            Text("Select all that apply (optional)")
-                .font(.subheadline)
-                .foregroundStyle(Color.moodletTextSecondary)
+                FlowLayout(spacing: MoodletTheme.smallSpacing) {
+                    ForEach(availablePeople) { person in
+                        PeopleTagChip(
+                            person: person,
+                            isSelected: selectedPeople.contains(person.id)
+                        ) {
+                            withAnimation(.spring(response: 0.3)) {
+                                if selectedPeople.contains(person.id) {
+                                    selectedPeople.remove(person.id)
+                                } else {
+                                    selectedPeople.insert(person.id)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
 
-            FlowLayout(spacing: MoodletTheme.smallSpacing) {
-                ForEach(DefaultActivityTag.allCases) { tag in
-                    ActivityTagChip(
-                        tag: tag,
-                        isSelected: selectedTags.contains(tag.rawValue)
-                    ) {
-                        withAnimation(.spring(response: 0.3)) {
-                            if selectedTags.contains(tag.rawValue) {
-                                selectedTags.remove(tag.rawValue)
-                            } else {
-                                selectedTags.insert(tag.rawValue)
+            // Activity Selection
+            VStack(spacing: MoodletTheme.spacing) {
+                Text("What's been part of your day?")
+                    .font(.subheadline)
+                    .foregroundStyle(Color.moodletTextSecondary)
+
+                FlowLayout(spacing: MoodletTheme.smallSpacing) {
+                    ForEach(availableActivities) { activity in
+                        CustomActivityTagChip(
+                            activity: activity,
+                            isSelected: selectedTags.contains(activity.id)
+                        ) {
+                            withAnimation(.spring(response: 0.3)) {
+                                if selectedTags.contains(activity.id) {
+                                    selectedTags.remove(activity.id)
+                                } else {
+                                    selectedTags.insert(activity.id)
+                                }
                             }
                         }
                     }
@@ -238,7 +296,7 @@ struct MoodLoggingSheet: View {
 
     private var actionButtons: some View {
         HStack(spacing: MoodletTheme.spacing) {
-            if currentStep != .mood {
+            if currentStep != .moodAndActivities {
                 Button {
                     withAnimation {
                         goBack()
@@ -263,15 +321,15 @@ struct MoodLoggingSheet: View {
                     }
                 }
             } label: {
-                Text(currentStep == .journal ? "Save" : (currentStep == .activities ? "Next" : "Continue"))
+                Text(currentStep == .journal ? "Save" : "Continue")
                     .fontWeight(.semibold)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .background(selectedMood != nil ? Color.moodletPrimary : Color.moodletPrimary.opacity(0.5))
+                    .background(selectedEmotion != nil ? Color.moodletPrimary : Color.moodletPrimary.opacity(0.5))
                     .foregroundStyle(.white)
                     .clipShape(RoundedRectangle(cornerRadius: MoodletTheme.cornerRadius))
             }
-            .disabled(selectedMood == nil)
+            .disabled(selectedEmotion == nil)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -281,9 +339,7 @@ struct MoodLoggingSheet: View {
 
     private func goNext() {
         switch currentStep {
-        case .mood:
-            currentStep = .activities
-        case .activities:
+        case .moodAndActivities:
             currentStep = .journal
         case .journal:
             break
@@ -292,31 +348,31 @@ struct MoodLoggingSheet: View {
 
     private func goBack() {
         switch currentStep {
-        case .mood:
+        case .moodAndActivities:
             break
-        case .activities:
-            currentStep = .mood
         case .journal:
-            currentStep = .activities
+            currentStep = .moodAndActivities
         }
     }
 
     // MARK: - Save Entry
 
     private func saveEntry() {
-        guard let mood = selectedMood else { return }
+        guard let emotion = selectedEmotion else { return }
 
         let entry = MoodEntry(
-            mood: mood,
+            mood: emotion.moodEquivalent,
+            emotionId: emotion.id,
             note: journalNote.isEmpty ? nil : journalNote,
             activityTags: Array(selectedTags),
+            peopleTags: Array(selectedPeople),
             earnedPoints: true
         )
 
         modelContext.insert(entry)
 
-        // Update points
-        if var profile = userProfile {
+        // Update points and streak
+        if let profile = userProfile {
             var points = Constants.Points.moodLog
             if !selectedTags.isEmpty {
                 points += Constants.Points.contextTags
@@ -325,6 +381,13 @@ struct MoodLoggingSheet: View {
                 points += Constants.Points.reflection
             }
             profile.totalPoints += points
+
+            // Update streak
+            streakService.updateStreak(for: profile, newEntryDate: Date())
+
+            // Check badges (add 1 for the entry we just created)
+            badgeService.checkFirstMoodBadge(profile: profile, moodEntryCount: moodEntries.count + 1)
+            badgeService.checkStreakBadges(profile: profile)
         }
 
         dismiss()
@@ -336,17 +399,16 @@ struct MoodLoggingSheet: View {
 extension MoodLoggingSheet.LoggingStep {
     var rawValue: Int {
         switch self {
-        case .mood: return 0
-        case .activities: return 1
-        case .journal: return 2
+        case .moodAndActivities: return 0
+        case .journal: return 1
         }
     }
 }
 
-// MARK: - Mood Button
+// MARK: - Emotion Button
 
-struct MoodButton: View {
-    let mood: Mood
+struct EmotionButton: View {
+    let emotion: EmotionOption
     let isSelected: Bool
     let action: () -> Void
 
@@ -355,20 +417,83 @@ struct MoodButton: View {
             VStack(spacing: 6) {
                 ZStack {
                     Circle()
-                        .fill(isSelected ? mood.color : mood.color.opacity(0.2))
+                        .fill(isSelected ? emotion.color.opacity(0.3) : emotion.color.opacity(0.15))
                         .frame(width: 56, height: 56)
 
-                    Image(systemName: mood.icon)
-                        .font(.title2)
-                        .foregroundStyle(isSelected ? .white : mood.color)
+                    Text(emotion.emoji)
+                        .font(.system(size: 28))
                 }
                 .scaleEffect(isSelected ? 1.1 : 1.0)
+                .overlay(
+                    Circle()
+                        .stroke(isSelected ? emotion.color : Color.clear, lineWidth: 3)
+                        .frame(width: 56, height: 56)
+                        .scaleEffect(isSelected ? 1.1 : 1.0)
+                )
 
-                Text(mood.displayName)
+                Text(emotion.name)
                     .font(.caption)
                     .fontWeight(isSelected ? .semibold : .regular)
                     .foregroundStyle(isSelected ? Color.moodletTextPrimary : Color.moodletTextSecondary)
             }
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - People Tag Chip
+
+struct PeopleTagChip: View {
+    let person: PeopleOption
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 5) {
+                Image(systemName: person.icon)
+                    .font(.system(size: 11))
+                Text(person.name)
+                    .font(.caption)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(isSelected ? Color.moodletPrimary : Color.moodletSurface)
+            .foregroundStyle(isSelected ? .white : Color.moodletTextPrimary)
+            .clipShape(Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(isSelected ? Color.clear : Color.moodletPrimary.opacity(0.3), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Custom Activity Tag Chip
+
+struct CustomActivityTagChip: View {
+    let activity: ActivityOption
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 5) {
+                Image(systemName: activity.icon)
+                    .font(.system(size: 11))
+                Text(activity.name)
+                    .font(.caption)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(isSelected ? Color.moodletPrimary : Color.moodletSurface)
+            .foregroundStyle(isSelected ? .white : Color.moodletTextPrimary)
+            .clipShape(Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(isSelected ? Color.clear : Color.moodletPrimary.opacity(0.3), lineWidth: 1)
+            )
         }
         .buttonStyle(.plain)
     }
@@ -383,14 +508,14 @@ struct ActivityTagChip: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 6) {
+            HStack(spacing: 5) {
                 Image(systemName: tag.icon)
-                    .font(.caption)
+                    .font(.system(size: 11))
                 Text(tag.rawValue)
-                    .font(.subheadline)
+                    .font(.caption)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
             .background(isSelected ? Color.moodletPrimary : Color.moodletSurface)
             .foregroundStyle(isSelected ? .white : Color.moodletTextPrimary)
             .clipShape(Capsule())

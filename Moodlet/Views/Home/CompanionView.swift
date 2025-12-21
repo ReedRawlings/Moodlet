@@ -48,14 +48,20 @@ struct CompanionView: View {
     // MARK: - Background
 
     private var backgroundView: some View {
-        LinearGradient(
-            colors: [
-                Color.moodletPrimary.opacity(0.1),
-                Color.moodletAccent.opacity(0.1)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
+        Group {
+            if let background = companion?.equippedBackground {
+                BackgroundImage(background: background)
+            } else {
+                LinearGradient(
+                    colors: [
+                        Color.moodletPrimary.opacity(0.1),
+                        Color.moodletAccent.opacity(0.1)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            }
+        }
     }
 
     // MARK: - Stats Overlay
@@ -97,15 +103,22 @@ struct CompanionView: View {
             VStack {
                 Spacer()
 
-                // Placeholder for companion sprite
-                // This will be replaced with actual sprite animations
-                CompanionPlaceholder(
-                    species: companion.species,
-                    expression: companionExpression,
-                    baseColor: Color(hex: companion.baseColor)
-                )
-                .scaleEffect(isAnimating ? 1.02 : 1.0)
-                .offset(y: isAnimating ? -4 : 0)
+                // Companion image with fallback to placeholder
+                ZStack {
+                    CompanionImage(
+                        species: companion.species,
+                        expression: companionExpression,
+                        size: 140
+                    )
+                    .scaleEffect(isAnimating ? 1.02 : 1.0)
+                    .offset(y: isAnimating ? -4 : 0)
+
+                    // Equipped accessories overlay
+                    ForEach(companion.equippedAccessories) { accessory in
+                        AccessoryImage(accessory: accessory, size: 60)
+                            .offset(y: -50) // Position above companion (adjust per accessory type)
+                    }
+                }
 
                 Spacer()
             }

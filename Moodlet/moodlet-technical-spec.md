@@ -17,7 +17,7 @@
 | **Main TabView** | ✅ Done | iOS 26 Tab API with 4 tabs (Home, Insights, Shop, Settings) |
 | **Home View** | ✅ Done | Companion display, mood logging button, today's entries, stats |
 | **Mood Logging Sheet** | ✅ Done | 3-step flow (mood → tags → journal), points calculation |
-| **Insights View** | ✅ Done | Mood calendar, timeframe picker, stats summary, top activities |
+| **Insights View** | ✅ Done | Mood calendar, timeframe picker, mood-activity/people relationships, time of day analysis |
 | **Mood Calendar** | ✅ Done | "Year in Pixels" style with month navigation |
 | **Shop View** | ✅ Done | Categories (accessories, backgrounds, species), placeholder inventory |
 | **Settings View** | ✅ Done | Notifications, export, data management, premium, about |

@@ -36,6 +36,30 @@ struct SettingsView: View {
                     }
                 }
 
+                // Badges Section
+                if let profile = userProfile {
+                    Section {
+                        BadgesGridView(userProfile: profile)
+                    } header: {
+                        Text("Badges")
+                    }
+                }
+
+                // Check-in Section
+                Section {
+                    NavigationLink {
+                        CheckInCustomizationView()
+                    } label: {
+                        SettingsRow(
+                            icon: "slider.horizontal.3",
+                            iconColor: .moodletPrimary,
+                            title: "Customize Check-in"
+                        )
+                    }
+                } header: {
+                    Text("Check-in")
+                }
+
                 // Account Section
                 Section {
                     premiumRow
@@ -239,6 +263,158 @@ struct SettingsRow: View {
                     .foregroundStyle(Color.moodletTextTertiary)
             }
         }
+    }
+}
+
+// MARK: - Badges Grid View
+
+struct BadgesGridView: View {
+    let userProfile: UserProfile
+    @State private var selectedBadge: Badge?
+
+    private let columns = [
+        GridItem(.flexible()),
+        GridItem(.flexible()),
+        GridItem(.flexible())
+    ]
+
+    var body: some View {
+        LazyVGrid(columns: columns, spacing: MoodletTheme.spacing) {
+            ForEach(Badge.allCases) { badge in
+                BadgeCard(
+                    badge: badge,
+                    isEarned: userProfile.hasBadge(badge)
+                ) {
+                    selectedBadge = badge
+                }
+            }
+        }
+        .padding(.vertical, MoodletTheme.smallSpacing)
+        .sheet(item: $selectedBadge) { badge in
+            BadgeDetailSheet(
+                badge: badge,
+                earnedDate: userProfile.badgeEarnedDate(badge)
+            )
+        }
+    }
+}
+
+// MARK: - Badge Card
+
+struct BadgeCard: View {
+    let badge: Badge
+    let isEarned: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 6) {
+                ZStack {
+                    Circle()
+                        .fill(isEarned ? badge.color.opacity(0.2) : Color.moodletBackground)
+                        .frame(width: 50, height: 50)
+
+                    Image(systemName: badge.icon)
+                        .font(.title2)
+                        .foregroundStyle(isEarned ? badge.color : Color.moodletTextTertiary)
+
+                    if !isEarned {
+                        Circle()
+                            .fill(Color.black.opacity(0.1))
+                            .frame(width: 50, height: 50)
+
+                        Image(systemName: "lock.fill")
+                            .font(.caption)
+                            .foregroundStyle(Color.moodletTextTertiary)
+                    }
+                }
+
+                Text(isEarned ? badge.name : "???")
+                    .font(.caption2)
+                    .fontWeight(.medium)
+                    .foregroundStyle(isEarned ? Color.moodletTextPrimary : Color.moodletTextTertiary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Badge Detail Sheet
+
+struct BadgeDetailSheet: View {
+    let badge: Badge
+    let earnedDate: Date?
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: MoodletTheme.largeSpacing) {
+                // Badge icon
+                ZStack {
+                    Circle()
+                        .fill(earnedDate != nil ? badge.color.opacity(0.2) : Color.moodletBackground)
+                        .frame(width: 100, height: 100)
+
+                    Image(systemName: badge.icon)
+                        .font(.system(size: 44))
+                        .foregroundStyle(earnedDate != nil ? badge.color : Color.moodletTextTertiary)
+
+                    if earnedDate == nil {
+                        Circle()
+                            .fill(Color.black.opacity(0.2))
+                            .frame(width: 100, height: 100)
+
+                        Image(systemName: "lock.fill")
+                            .font(.title)
+                            .foregroundStyle(Color.moodletTextTertiary)
+                    }
+                }
+
+                // Badge info
+                VStack(spacing: 8) {
+                    Text(badge.name)
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundStyle(Color.moodletTextPrimary)
+
+                    Text(badge.description)
+                        .font(.subheadline)
+                        .foregroundStyle(Color.moodletTextSecondary)
+                        .multilineTextAlignment(.center)
+
+                    if let date = earnedDate {
+                        HStack(spacing: 4) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(Color.moodletPrimary)
+                            Text("Earned \(date.relativeDescription)")
+                                .font(.caption)
+                                .foregroundStyle(Color.moodletPrimary)
+                        }
+                        .padding(.top, 8)
+                    } else {
+                        Text("Not yet earned")
+                            .font(.caption)
+                            .foregroundStyle(Color.moodletTextTertiary)
+                            .padding(.top, 8)
+                    }
+                }
+
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("Badge")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium])
     }
 }
 
