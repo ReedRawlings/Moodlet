@@ -17,6 +17,7 @@ final class UserProfile {
     var onboardingCompleted: Bool
     var onboardingStep: Int
     var notificationTimes: [Date]
+    var notificationsEnabled: Bool
     var isPremium: Bool
     var premiumExpirationDate: Date?
 
@@ -63,6 +64,7 @@ final class UserProfile {
         self.onboardingCompleted = false
         self.onboardingStep = 0
         self.notificationTimes = []
+        self.notificationsEnabled = false
         self.isPremium = false
         self.premiumExpirationDate = nil
         self.unlockedAccessoryIDs = []

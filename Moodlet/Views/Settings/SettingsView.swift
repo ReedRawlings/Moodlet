@@ -421,23 +421,45 @@ struct BadgeDetailSheet: View {
 // MARK: - Notification Settings View
 
 struct NotificationSettingsView: View {
-    @State private var notificationsEnabled = true
+    @Environment(\.appState) private var appState
+    @Query private var userProfiles: [UserProfile]
+
+    @State private var notificationsEnabled = false
     @State private var morningTime = Calendar.current.date(from: DateComponents(hour: 9, minute: 0)) ?? Date()
     @State private var eveningTime = Calendar.current.date(from: DateComponents(hour: 20, minute: 0)) ?? Date()
     @State private var showMorningReminder = true
     @State private var showEveningReminder = true
+    @State private var permissionDenied = false
+    @State private var isLoading = false
+
+    private var userProfile: UserProfile? {
+        userProfiles.first
+    }
 
     var body: some View {
         List {
             Section {
                 Toggle("Enable Notifications", isOn: $notificationsEnabled)
+                    .onChange(of: notificationsEnabled) { _, newValue in
+                        Task {
+                            await handleNotificationToggle(enabled: newValue)
+                        }
+                    }
             } footer: {
-                Text("Gentle reminders to check in with yourself")
+                if permissionDenied {
+                    Text("Notification permission was denied. Please enable notifications in Settings > Moodlet to receive reminders.")
+                        .foregroundStyle(.red)
+                } else {
+                    Text("Gentle reminders to check in with yourself")
+                }
             }
 
-            if notificationsEnabled {
+            if notificationsEnabled && !permissionDenied {
                 Section {
                     Toggle("Morning Check-in", isOn: $showMorningReminder)
+                        .onChange(of: showMorningReminder) { _, _ in
+                            Task { await updateNotificationSchedule() }
+                        }
 
                     if showMorningReminder {
                         DatePicker(
@@ -445,6 +467,9 @@ struct NotificationSettingsView: View {
                             selection: $morningTime,
                             displayedComponents: .hourAndMinute
                         )
+                        .onChange(of: morningTime) { _, _ in
+                            Task { await updateNotificationSchedule() }
+                        }
                     }
                 } header: {
                     Text("Morning")
@@ -452,6 +477,9 @@ struct NotificationSettingsView: View {
 
                 Section {
                     Toggle("Evening Check-in", isOn: $showEveningReminder)
+                        .onChange(of: showEveningReminder) { _, _ in
+                            Task { await updateNotificationSchedule() }
+                        }
 
                     if showEveningReminder {
                         DatePicker(
@@ -459,6 +487,9 @@ struct NotificationSettingsView: View {
                             selection: $eveningTime,
                             displayedComponents: .hourAndMinute
                         )
+                        .onChange(of: eveningTime) { _, _ in
+                            Task { await updateNotificationSchedule() }
+                        }
                     }
                 } header: {
                     Text("Evening")
@@ -467,6 +498,112 @@ struct NotificationSettingsView: View {
         }
         .navigationTitle("Notifications")
         .navigationBarTitleDisplayMode(.inline)
+        .disabled(isLoading)
+        .onAppear {
+            loadSavedSettings()
+        }
+    }
+
+    private func loadSavedSettings() {
+        guard let profile = userProfile else { return }
+
+        notificationsEnabled = profile.notificationsEnabled
+        let times = profile.notificationTimes
+
+        // If we have saved times, restore them
+        if times.count >= 1 {
+            morningTime = times[0]
+            showMorningReminder = true
+        }
+        if times.count >= 2 {
+            eveningTime = times[1]
+            showEveningReminder = true
+        }
+
+        // Check if only one time is saved - determine if it's morning or evening
+        if times.count == 1 {
+            let hour = Calendar.current.component(.hour, from: times[0])
+            if hour >= 17 {
+                // It's an evening time
+                eveningTime = times[0]
+                showEveningReminder = true
+                showMorningReminder = false
+            } else {
+                // It's a morning time
+                morningTime = times[0]
+                showMorningReminder = true
+                showEveningReminder = false
+            }
+        }
+
+        // Check current permission status
+        Task {
+            await appState.notificationService.checkPermission()
+            if notificationsEnabled && !appState.notificationService.hasPermission {
+                await MainActor.run {
+                    permissionDenied = true
+                }
+            }
+        }
+    }
+
+    private func handleNotificationToggle(enabled: Bool) async {
+        isLoading = true
+        defer { isLoading = false }
+
+        guard let profile = userProfile else { return }
+
+        if enabled {
+            // Request permission if not already granted
+            let granted = await appState.notificationService.requestPermission()
+
+            await MainActor.run {
+                if granted {
+                    permissionDenied = false
+                    profile.notificationsEnabled = true
+                } else {
+                    permissionDenied = true
+                    notificationsEnabled = false
+                    profile.notificationsEnabled = false
+                }
+            }
+
+            if granted {
+                await updateNotificationSchedule()
+            }
+        } else {
+            // Disable notifications
+            appState.notificationService.cancelAllNotifications()
+            await MainActor.run {
+                profile.notificationsEnabled = false
+                profile.notificationTimes = []
+            }
+        }
+    }
+
+    private func updateNotificationSchedule() async {
+        guard let profile = userProfile else { return }
+        guard notificationsEnabled && appState.notificationService.hasPermission else { return }
+
+        var times: [Date] = []
+        if showMorningReminder {
+            times.append(morningTime)
+        }
+        if showEveningReminder {
+            times.append(eveningTime)
+        }
+
+        // Schedule notifications
+        if !times.isEmpty {
+            try? await appState.notificationService.scheduleNotifications(times: times)
+        } else {
+            appState.notificationService.cancelAllNotifications()
+        }
+
+        // Save to profile
+        await MainActor.run {
+            profile.notificationTimes = times
+        }
     }
 }
 

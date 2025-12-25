@@ -9,15 +9,22 @@ import SwiftData
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var userProfiles: [UserProfile]
+    @Query private var companions: [Companion]
 
     private var hasCompletedOnboarding: Bool {
         userProfiles.first?.onboardingCompleted ?? false
     }
 
+    private var hasCompanion: Bool {
+        !companions.isEmpty
+    }
+
     var body: some View {
-        // For now, always show the main app
-        // Onboarding will be implemented separately
-        MainTabView()
+        if hasCompletedOnboarding && hasCompanion {
+            MainTabView()
+        } else {
+            OnboardingView()
+        }
     }
 }
 
