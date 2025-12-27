@@ -56,6 +56,7 @@ struct CheckInCustomizationView: View {
 // MARK: - Emotion Selection View
 
 struct EmotionSelectionView: View {
+    @Environment(\.appState) private var appState
     let userProfile: UserProfile?
 
     private let columns = [
@@ -96,6 +97,13 @@ struct EmotionSelectionView: View {
             }
         } else {
             profile.selectedEmotionIds.append(emotion.id)
+        }
+
+        // Update notification quick actions to match new emotion selection
+        Task {
+            await appState.notificationService.registerNotificationCategories(
+                emotionIds: profile.selectedEmotionIds
+            )
         }
     }
 }

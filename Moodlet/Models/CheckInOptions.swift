@@ -50,6 +50,11 @@ struct EmotionOption: Identifiable, Codable, Hashable {
     static func find(byId id: String) -> EmotionOption? {
         presets.first { $0.id == id }
     }
+
+    /// Find the default emotion option for a given Mood
+    static func find(byMood mood: Mood) -> EmotionOption? {
+        presets.first { $0.id == mood.rawValue }
+    }
 }
 
 // MARK: - Activity Option

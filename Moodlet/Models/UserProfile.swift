@@ -25,6 +25,7 @@ final class UserProfile {
     var unlockedBackgroundIDs: [UUID]
     var unlockedSpecies: [String]
     var earnedBadges: [String: Date]
+    var reviewedWeekStartDates: [Date]  // Tracks which weeks have been reviewed for points
 
     // Check-in customization
     var selectedEmotionIds: [String]
@@ -71,6 +72,7 @@ final class UserProfile {
         self.unlockedBackgroundIDs = []
         self.unlockedSpecies = [CompanionSpecies.cat.rawValue]
         self.earnedBadges = [:]
+        self.reviewedWeekStartDates = []
         self.selectedEmotionIds = EmotionOption.defaultSelection
         self.selectedActivityIds = ActivityOption.defaultSelection
         self.selectedPeopleIds = PeopleOption.defaultSelection
@@ -101,5 +103,48 @@ final class UserProfile {
 
     func badgeEarnedDate(_ badge: Badge) -> Date? {
         earnedBadges[badge.rawValue]
+    }
+
+    // MARK: - Weekly Review
+
+    /// Returns the start of the week (Sunday) for a given date
+    static func weekStart(for date: Date) -> Date {
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date)
+        return calendar.date(from: components) ?? date
+    }
+
+    /// Check if a specific week has been reviewed
+    func hasReviewedWeek(startingOn weekStart: Date) -> Bool {
+        let calendar = Calendar.current
+        return reviewedWeekStartDates.contains { reviewedDate in
+            calendar.isDate(reviewedDate, inSameDayAs: weekStart)
+        }
+    }
+
+    /// Mark a week as reviewed and award points
+    func markWeekReviewed(startingOn weekStart: Date) {
+        guard !hasReviewedWeek(startingOn: weekStart) else { return }
+        reviewedWeekStartDates.append(weekStart)
+        totalPoints += Constants.Points.weeklyReview
+    }
+
+    /// Get the most recent complete week that hasn't been reviewed
+    func unreviewedWeekStart() -> Date? {
+        let calendar = Calendar.current
+        let now = Date()
+        let currentWeekStart = Self.weekStart(for: now)
+
+        // Check the previous week (last week is the most recent complete week)
+        guard let lastWeekStart = calendar.date(byAdding: .weekOfYear, value: -1, to: currentWeekStart) else {
+            return nil
+        }
+
+        // Only return if not already reviewed
+        if !hasReviewedWeek(startingOn: lastWeekStart) {
+            return lastWeekStart
+        }
+
+        return nil
     }
 }

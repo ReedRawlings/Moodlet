@@ -65,6 +65,34 @@ Schema configured in `MoodletApp.swift` with CloudKit sync (`.automatic`). Model
 - Background: `#f3eff5` (Light Lavender)
 - Mood colors: Happy `#FFD93D`, Content `#6BCB77`, Neutral `#B08D57`, Annoyed `#FF8C42`, Sad `#4D96FF`
 
+## Asset Naming & Layering System
+
+Companions use a **layered rendering system** - one base image per species with accessories stacked on top.
+
+### Asset Structure
+```
+Assets.xcassets/
+├── Companions/           # One image per species: cat, bear, bunny, frog, fox, penguin
+│   └── {species}.imageset/
+├── Accessories/          # Layered on top of companion
+│   ├── Eyes/            # Expression overlays (happy_eyes, sleepy_eyes)
+│   ├── Tops/            # Clothing (cozy_sweater, striped_shirt)
+│   ├── Glasses/         # Eyewear (cool_shades, round_glasses)
+│   ├── Hats/            # Headwear (cozy_beanie, party_hat)
+│   └── HeldItems/       # Items held (coffee_cup, tiny_book)
+└── Backgrounds/         # Scene backgrounds
+```
+
+### Layer Order (bottom to top)
+1. Base Companion → 2. Eyes → 3. Top → 4. Glasses → 5. Hat → 6. Held Item
+
+### Naming Pattern
+| Type | Pattern | Example |
+|------|---------|---------|
+| Companion | `Companions/{species}` | `Companions/cat` |
+| Accessory | `Accessories/{Category}/{name}` | `Accessories/Hats/cozy_beanie` |
+| Background | `Backgrounds/{name}` | `Backgrounds/cozy_room` |
+
 ## Documentation
 
 Detailed specs in `Moodlet/`:

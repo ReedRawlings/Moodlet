@@ -53,6 +53,17 @@ enum CompanionSpecies: String, Codable, CaseIterable, Identifiable {
         case .penguin: return "Resilient & cheerful"
         }
     }
+
+    var emoji: String {
+        switch self {
+        case .cat: return "🐱"
+        case .bear: return "🐻"
+        case .bunny: return "🐰"
+        case .frog: return "🐸"
+        case .fox: return "🦊"
+        case .penguin: return "🐧"
+        }
+    }
 }
 
 enum Pronouns: String, Codable, CaseIterable, Identifiable {

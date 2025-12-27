@@ -56,9 +56,6 @@ struct ShopView: View {
                 ItemDetailSheet(item: item)
             }
         }
-        .onAppear {
-            seedShopIfNeeded()
-        }
     }
 
     // MARK: - Points Header
@@ -211,53 +208,6 @@ struct ShopView: View {
         .padding(.vertical, 40)
     }
 
-    // MARK: - Seed Shop
-
-    private func seedShopIfNeeded() {
-        guard accessories.isEmpty else { return }
-
-        // Seed with accessories (imageName matches asset naming: snake_case)
-        let placeholderAccessories: [(String, String, AccessoryCategory, Int)] = [
-            ("Cozy Beanie", "cozy_beanie", .hat, 10),
-            ("Party Hat", "party_hat", .hat, 15),
-            ("Flower Crown", "flower_crown", .hat, 20),
-            ("Cool Shades", "cool_shades", .glasses, 8),
-            ("Round Glasses", "round_glasses", .glasses, 12),
-            ("Warm Scarf", "warm_scarf", .scarf, 10),
-            ("Rainbow Scarf", "rainbow_scarf", .scarf, 25),
-            ("Coffee Cup", "coffee_cup", .heldItem, 8),
-            ("Tiny Book", "tiny_book", .heldItem, 12),
-            ("Cozy Sweater", "cozy_sweater", .outfit, 30)
-        ]
-
-        for (name, imageName, category, price) in placeholderAccessories {
-            let accessory = Accessory(
-                name: name,
-                imageName: imageName,
-                category: category,
-                price: price
-            )
-            modelContext.insert(accessory)
-        }
-
-        // Seed with backgrounds (imageName matches asset naming: snake_case)
-        let placeholderBackgrounds: [(String, String, Int)] = [
-            ("Cozy Room", "cozy_room", 20),
-            ("Sunny Garden", "sunny_garden", 25),
-            ("Night Sky", "night_sky", 30),
-            ("Beach Sunset", "beach_sunset", 35),
-            ("Mountain View", "mountain_view", 40)
-        ]
-
-        for (name, imageName, price) in placeholderBackgrounds {
-            let background = Background(
-                name: name,
-                imageName: imageName,
-                price: price
-            )
-            modelContext.insert(background)
-        }
-    }
 }
 
 // MARK: - Shop Item Enum
@@ -520,7 +470,7 @@ struct SpeciesCard: View {
                     .frame(width: 80, height: 80)
 
                 // Species image with fallback to placeholder
-                CompanionImage(species: species, expression: "neutral", size: 70)
+                CompanionImage(species: species, size: 70)
 
                 if !isUnlocked && isPremium {
                     Circle()

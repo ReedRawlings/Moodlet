@@ -27,6 +27,7 @@ struct OnboardingView: View {
     private enum OnboardingStep {
         case companion
         case notifications
+        case premium
     }
 
     private var userProfile: UserProfile? {
@@ -44,6 +45,8 @@ struct OnboardingView: View {
                 companionStepView
             case .notifications:
                 notificationStepView
+            case .premium:
+                premiumStepView
             }
         }
         .background(Color.moodletBackground)
@@ -261,7 +264,7 @@ struct OnboardingView: View {
             VStack(spacing: 12) {
                 Button {
                     Task {
-                        await completeOnboarding()
+                        await setupNotificationsAndContinue()
                     }
                 } label: {
                     Text(enableNotifications ? "Enable Notifications" : "Continue Without Notifications")
@@ -277,7 +280,7 @@ struct OnboardingView: View {
                     Button {
                         enableNotifications = false
                         Task {
-                            await completeOnboarding()
+                            await setupNotificationsAndContinue()
                         }
                     } label: {
                         Text("Maybe Later")
@@ -311,7 +314,7 @@ struct OnboardingView: View {
         }
     }
 
-    private func completeOnboarding() async {
+    private func setupNotificationsAndContinue() async {
         guard let profile = userProfile else { return }
 
         if enableNotifications {
@@ -328,9 +331,12 @@ struct OnboardingView: View {
                     times.append(eveningTime)
                 }
 
-                // Schedule notifications
+                // Schedule notifications with user's emotion preferences
                 if !times.isEmpty {
-                    try? await appState.notificationService.scheduleNotifications(times: times)
+                    try? await appState.notificationService.scheduleNotifications(
+                        times: times,
+                        emotionIds: profile.selectedEmotionIds
+                    )
                 }
 
                 // Save to profile
@@ -346,8 +352,23 @@ struct OnboardingView: View {
             profile.notificationTimes = []
         }
 
-        // Mark onboarding as completed
+        // Move to premium step
+        withAnimation(.easeInOut(duration: 0.3)) {
+            currentStep = .premium
+        }
+    }
+
+    private func completeOnboarding() {
+        guard let profile = userProfile else { return }
         profile.onboardingCompleted = true
+    }
+
+    // MARK: - Premium Step
+
+    private var premiumStepView: some View {
+        OnboardingPremiumUpsell {
+            completeOnboarding()
+        }
     }
 }
 
@@ -367,7 +388,7 @@ struct SpeciesSelectionCard: View {
                         .fill(isSelected ? Color.moodletPrimary.opacity(0.2) : Color.moodletSurface)
                         .frame(width: 70, height: 70)
 
-                    CompanionImage(species: species, expression: "neutral", size: 60)
+                    CompanionImage(species: species, size: 60)
 
                     if isLocked {
                         Circle()

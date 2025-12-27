@@ -12,6 +12,9 @@ final class AppState {
     var selectedTab: AppTab = .home
     var showMoodLogging: Bool = false
 
+    /// Emotion pre-selected from notification quick action (nil = show full picker)
+    var pendingNotificationEmotion: EmotionOption?
+
     // Services
     let pointsService = PointsService()
     let streakService = StreakService()
@@ -20,6 +23,23 @@ final class AppState {
 
     init() {
         // Load persisted state if needed
+    }
+
+    /// Called when user taps notification or selects a quick action
+    @MainActor
+    func handleNotificationAction(_ actionIdentifier: String) {
+        // Navigate to home tab
+        selectedTab = .home
+
+        if let emotion = NotificationService.emotion(from: actionIdentifier) {
+            // Quick action - pre-select the emotion
+            pendingNotificationEmotion = emotion
+            showMoodLogging = true
+        } else {
+            // Default tap or unknown action - open mood logging
+            pendingNotificationEmotion = nil
+            showMoodLogging = true
+        }
     }
 }
 

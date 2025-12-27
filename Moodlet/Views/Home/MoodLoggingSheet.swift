@@ -10,6 +10,8 @@ import SwiftData
 
 struct MoodLoggingOverlay: View {
     @Binding var isPresented: Bool
+    var preSelectedEmotion: EmotionOption?
+    var onDismiss: (() -> Void)?
 
     var body: some View {
         ZStack {
@@ -19,17 +21,22 @@ struct MoodLoggingOverlay: View {
                 .onTapGesture {
                     withAnimation(.easeInOut(duration: 0.25)) {
                         isPresented = false
+                        onDismiss?()
                     }
                 }
 
             // Centered card - constrained to content size
             VStack {
                 Spacer()
-                MoodLoggingSheet(dismiss: {
-                    withAnimation(.easeInOut(duration: 0.25)) {
-                        isPresented = false
+                MoodLoggingSheet(
+                    preSelectedEmotion: preSelectedEmotion,
+                    dismiss: {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            isPresented = false
+                            onDismiss?()
+                        }
                     }
-                })
+                )
                 .frame(maxWidth: 380)
                 .background(
                     RoundedRectangle(cornerRadius: MoodletTheme.largeCornerRadius)
@@ -52,6 +59,7 @@ struct MoodLoggingSheet: View {
     @Query private var moodEntries: [MoodEntry]
     @Query private var companions: [Companion]
 
+    var preSelectedEmotion: EmotionOption?
     var dismiss: () -> Void
 
     @State private var selectedEmotion: EmotionOption?
@@ -60,6 +68,7 @@ struct MoodLoggingSheet: View {
     @State private var journalNote: String = ""
     @State private var currentStep: LoggingStep = .moodAndActivities
     @State private var journalPrompts: [String] = JournalPrompts.randomPrompts(count: 2)
+    @State private var hasAppliedPreSelection = false
 
     private var userProfile: UserProfile? {
         userProfiles.first
@@ -129,6 +138,18 @@ struct MoodLoggingSheet: View {
             // Action buttons
             actionButtons
         }
+        .onAppear {
+            applyPreSelectedEmotion()
+        }
+    }
+
+    /// Apply pre-selected emotion from notification quick action
+    private func applyPreSelectedEmotion() {
+        guard !hasAppliedPreSelection,
+              let emotion = preSelectedEmotion else { return }
+
+        hasAppliedPreSelection = true
+        selectedEmotion = emotion
     }
 
     // MARK: - Header View
@@ -183,20 +204,22 @@ struct MoodLoggingSheet: View {
 
     private var moodAndActivitiesView: some View {
         VStack(spacing: MoodletTheme.largeSpacing) {
-            // Emotion Selection
-            FlowLayout(spacing: MoodletTheme.smallSpacing) {
-                ForEach(availableEmotions) { emotion in
-                    EmotionButton(
-                        emotion: emotion,
-                        isSelected: selectedEmotion?.id == emotion.id
-                    ) {
-                        withAnimation(.spring(response: 0.3)) {
-                            selectedEmotion = emotion
+            // Emotion Selection - horizontal scroll for single line
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: MoodletTheme.spacing) {
+                    ForEach(availableEmotions) { emotion in
+                        EmotionButton(
+                            emotion: emotion,
+                            isSelected: selectedEmotion?.id == emotion.id
+                        ) {
+                            withAnimation(.spring(response: 0.3)) {
+                                selectedEmotion = emotion
+                            }
                         }
                     }
                 }
+                .padding(.horizontal, MoodletTheme.smallSpacing)
             }
-            .padding(.horizontal, MoodletTheme.smallSpacing)
 
             // People Selection
             VStack(spacing: MoodletTheme.spacing) {

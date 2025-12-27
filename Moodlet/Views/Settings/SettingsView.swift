@@ -5,6 +5,7 @@
 
 import SwiftUI
 import SwiftData
+import StoreKit
 
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
@@ -425,15 +426,19 @@ struct NotificationSettingsView: View {
     @Query private var userProfiles: [UserProfile]
 
     @State private var notificationsEnabled = false
-    @State private var morningTime = Calendar.current.date(from: DateComponents(hour: 9, minute: 0)) ?? Date()
-    @State private var eveningTime = Calendar.current.date(from: DateComponents(hour: 20, minute: 0)) ?? Date()
-    @State private var showMorningReminder = true
-    @State private var showEveningReminder = true
+    @State private var notificationTimes: [Date] = []
     @State private var permissionDenied = false
     @State private var isLoading = false
+    @State private var editingTimeIndex: Int?
+
+    private let maxNotifications = 5
 
     private var userProfile: UserProfile? {
         userProfiles.first
+    }
+
+    private var canAddMoreNotifications: Bool {
+        notificationTimes.count < maxNotifications
     }
 
     var body: some View {
@@ -456,43 +461,37 @@ struct NotificationSettingsView: View {
 
             if notificationsEnabled && !permissionDenied {
                 Section {
-                    Toggle("Morning Check-in", isOn: $showMorningReminder)
-                        .onChange(of: showMorningReminder) { _, _ in
-                            Task { await updateNotificationSchedule() }
-                        }
-
-                    if showMorningReminder {
-                        DatePicker(
-                            "Time",
-                            selection: $morningTime,
-                            displayedComponents: .hourAndMinute
+                    ForEach(Array(notificationTimes.enumerated()), id: \.offset) { index, time in
+                        NotificationTimeRow(
+                            time: Binding(
+                                get: { notificationTimes[index] },
+                                set: { newTime in
+                                    notificationTimes[index] = newTime
+                                    Task { await updateNotificationSchedule() }
+                                }
+                            ),
+                            onDelete: {
+                                deleteNotification(at: index)
+                            }
                         )
-                        .onChange(of: morningTime) { _, _ in
-                            Task { await updateNotificationSchedule() }
+                    }
+
+                    if canAddMoreNotifications {
+                        Button {
+                            addNotification()
+                        } label: {
+                            HStack {
+                                Image(systemName: "plus.circle.fill")
+                                    .foregroundStyle(Color.moodletPrimary)
+                                Text("Add Reminder")
+                                    .foregroundStyle(Color.moodletPrimary)
+                            }
                         }
                     }
                 } header: {
-                    Text("Morning")
-                }
-
-                Section {
-                    Toggle("Evening Check-in", isOn: $showEveningReminder)
-                        .onChange(of: showEveningReminder) { _, _ in
-                            Task { await updateNotificationSchedule() }
-                        }
-
-                    if showEveningReminder {
-                        DatePicker(
-                            "Time",
-                            selection: $eveningTime,
-                            displayedComponents: .hourAndMinute
-                        )
-                        .onChange(of: eveningTime) { _, _ in
-                            Task { await updateNotificationSchedule() }
-                        }
-                    }
-                } header: {
-                    Text("Evening")
+                    Text("Reminders")
+                } footer: {
+                    Text("You can set up to \(maxNotifications) daily reminders")
                 }
             }
         }
@@ -508,32 +507,12 @@ struct NotificationSettingsView: View {
         guard let profile = userProfile else { return }
 
         notificationsEnabled = profile.notificationsEnabled
-        let times = profile.notificationTimes
+        notificationTimes = profile.notificationTimes.sorted()
 
-        // If we have saved times, restore them
-        if times.count >= 1 {
-            morningTime = times[0]
-            showMorningReminder = true
-        }
-        if times.count >= 2 {
-            eveningTime = times[1]
-            showEveningReminder = true
-        }
-
-        // Check if only one time is saved - determine if it's morning or evening
-        if times.count == 1 {
-            let hour = Calendar.current.component(.hour, from: times[0])
-            if hour >= 17 {
-                // It's an evening time
-                eveningTime = times[0]
-                showEveningReminder = true
-                showMorningReminder = false
-            } else {
-                // It's a morning time
-                morningTime = times[0]
-                showMorningReminder = true
-                showEveningReminder = false
-            }
+        // If no times saved but notifications enabled, add a default
+        if notificationTimes.isEmpty && notificationsEnabled {
+            let defaultTime = Calendar.current.date(from: DateComponents(hour: 9, minute: 0)) ?? Date()
+            notificationTimes = [defaultTime]
         }
 
         // Check current permission status
@@ -545,6 +524,32 @@ struct NotificationSettingsView: View {
                 }
             }
         }
+    }
+
+    private func addNotification() {
+        // Find a good default time that doesn't conflict with existing times
+        let existingHours = Set(notificationTimes.map { Calendar.current.component(.hour, from: $0) })
+        let preferredHours = [9, 12, 15, 18, 21] // Morning, noon, afternoon, evening, night
+
+        var newHour = 12
+        for hour in preferredHours {
+            if !existingHours.contains(hour) {
+                newHour = hour
+                break
+            }
+        }
+
+        let newTime = Calendar.current.date(from: DateComponents(hour: newHour, minute: 0)) ?? Date()
+        notificationTimes.append(newTime)
+        notificationTimes.sort()
+
+        Task { await updateNotificationSchedule() }
+    }
+
+    private func deleteNotification(at index: Int) {
+        guard index < notificationTimes.count else { return }
+        notificationTimes.remove(at: index)
+        Task { await updateNotificationSchedule() }
     }
 
     private func handleNotificationToggle(enabled: Bool) async {
@@ -561,6 +566,12 @@ struct NotificationSettingsView: View {
                 if granted {
                     permissionDenied = false
                     profile.notificationsEnabled = true
+
+                    // Add a default time if none exist
+                    if notificationTimes.isEmpty {
+                        let defaultTime = Calendar.current.date(from: DateComponents(hour: 9, minute: 0)) ?? Date()
+                        notificationTimes = [defaultTime]
+                    }
                 } else {
                     permissionDenied = true
                     notificationsEnabled = false
@@ -585,24 +596,65 @@ struct NotificationSettingsView: View {
         guard let profile = userProfile else { return }
         guard notificationsEnabled && appState.notificationService.hasPermission else { return }
 
-        var times: [Date] = []
-        if showMorningReminder {
-            times.append(morningTime)
-        }
-        if showEveningReminder {
-            times.append(eveningTime)
-        }
+        let sortedTimes = notificationTimes.sorted()
 
-        // Schedule notifications
-        if !times.isEmpty {
-            try? await appState.notificationService.scheduleNotifications(times: times)
+        // Schedule notifications with user's emotion preferences
+        if !sortedTimes.isEmpty {
+            try? await appState.notificationService.scheduleNotifications(
+                times: sortedTimes,
+                emotionIds: profile.selectedEmotionIds
+            )
         } else {
             appState.notificationService.cancelAllNotifications()
         }
 
         // Save to profile
         await MainActor.run {
-            profile.notificationTimes = times
+            profile.notificationTimes = sortedTimes
+        }
+    }
+}
+
+// MARK: - Notification Time Row
+
+struct NotificationTimeRow: View {
+    @Binding var time: Date
+    let onDelete: () -> Void
+
+    var body: some View {
+        HStack {
+            DatePicker(
+                "",
+                selection: $time,
+                displayedComponents: .hourAndMinute
+            )
+            .labelsHidden()
+
+            Spacer()
+
+            Text(timeDescription)
+                .font(.caption)
+                .foregroundStyle(Color.moodletTextSecondary)
+
+            Button(action: onDelete) {
+                Image(systemName: "minus.circle.fill")
+                    .foregroundStyle(.red)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var timeDescription: String {
+        let hour = Calendar.current.component(.hour, from: time)
+        switch hour {
+        case 5..<12:
+            return "Morning"
+        case 12..<17:
+            return "Afternoon"
+        case 17..<21:
+            return "Evening"
+        default:
+            return "Night"
         }
     }
 }
@@ -842,31 +894,12 @@ struct CompanionCustomizationView: View {
 // MARK: - Premium View
 
 struct PremiumView: View {
-    @State private var selectedPlan: PremiumPlan = .annual
-
-    enum PremiumPlan: String, CaseIterable, Identifiable {
-        case monthly = "Monthly"
-        case annual = "Annual"
-        case lifetime = "Lifetime"
-
-        var id: String { rawValue }
-
-        var price: String {
-            switch self {
-            case .monthly: return "$4.99/mo"
-            case .annual: return "$29.99/yr"
-            case .lifetime: return "$79.99"
-            }
-        }
-
-        var savings: String? {
-            switch self {
-            case .annual: return "Save 50%"
-            case .lifetime: return "Best Value"
-            default: return nil
-            }
-        }
-    }
+    @Environment(\.dismiss) private var dismiss
+    private var storeManager = StoreKitManager.shared
+    @State private var selectedProductId: String?
+    @State private var isPurchasing: Bool = false
+    @State private var showError: Bool = false
+    @State private var errorMessage: String = ""
 
     var body: some View {
         ScrollView {
@@ -887,70 +920,136 @@ struct PremiumView: View {
                         .font(.title)
                         .fontWeight(.bold)
 
-                    Text("Unlock the full experience")
-                        .font(.subheadline)
-                        .foregroundStyle(Color.moodletTextSecondary)
+                    if storeManager.isPremium {
+                        Text(storeManager.statusDescription)
+                            .font(.subheadline)
+                            .foregroundStyle(Color.moodletPrimary)
+
+                        if let expiration = storeManager.formattedExpirationDate() {
+                            Text("Renews \(expiration)")
+                                .font(.caption)
+                                .foregroundStyle(Color.moodletTextSecondary)
+                        }
+                    } else {
+                        Text("Unlock the full experience")
+                            .font(.subheadline)
+                            .foregroundStyle(Color.moodletTextSecondary)
+                    }
                 }
 
                 // Features
                 VStack(alignment: .leading, spacing: MoodletTheme.spacing) {
-                    PremiumFeatureRow(icon: "paintpalette.fill", text: "100+ exclusive accessories")
-                    PremiumFeatureRow(icon: "pawprint.fill", text: "All 6 Moodlet species")
-                    PremiumFeatureRow(icon: "chart.xyaxis.line", text: "Advanced insights & patterns")
-                    PremiumFeatureRow(icon: "icloud.fill", text: "iCloud backup & sync")
-                    PremiumFeatureRow(icon: "sparkles", text: "Seasonal exclusive items")
+                    SettingsPremiumFeatureRow(icon: "pawprint.fill", text: "All 6 Moodlet species")
+                    SettingsPremiumFeatureRow(icon: "paintpalette.fill", text: "100+ exclusive accessories")
+                    SettingsPremiumFeatureRow(icon: "sparkles", text: "Seasonal exclusive items")
+                    SettingsPremiumFeatureRow(icon: "chart.xyaxis.line", text: "Advanced insights & patterns")
+                    SettingsPremiumFeatureRow(icon: "icloud.fill", text: "iCloud backup & sync")
                 }
                 .padding()
                 .background(Color.moodletSurface)
                 .clipShape(RoundedRectangle(cornerRadius: MoodletTheme.cornerRadius))
 
-                // Plan Selection
-                VStack(spacing: MoodletTheme.smallSpacing) {
-                    ForEach(PremiumPlan.allCases) { plan in
-                        PremiumPlanCard(
-                            plan: plan,
-                            isSelected: selectedPlan == plan
-                        ) {
-                            selectedPlan = plan
+                if !storeManager.isPremium {
+                    // Plan Selection
+                    VStack(spacing: MoodletTheme.smallSpacing) {
+                        if let yearly = storeManager.yearlyProduct {
+                            UpgradePlanOption(
+                                product: yearly,
+                                isSelected: selectedProductId == yearly.id,
+                                badge: "Save 50%",
+                                subtitle: storeManager.formattedPricePerMonth(for: yearly).map { "\($0)/month" },
+                                onTap: { selectedProductId = yearly.id }
+                            )
+                        }
+
+                        if let monthly = storeManager.monthlyProduct {
+                            UpgradePlanOption(
+                                product: monthly,
+                                isSelected: selectedProductId == monthly.id,
+                                badge: nil,
+                                subtitle: nil,
+                                onTap: { selectedProductId = monthly.id }
+                            )
                         }
                     }
-                }
 
-                // Subscribe Button
-                Button {
-                    // Purchase logic
-                } label: {
-                    Text("Subscribe")
-                        .fontWeight(.semibold)
+                    // Subscribe Button
+                    Button {
+                        purchase()
+                    } label: {
+                        HStack {
+                            if isPurchasing || storeManager.isLoading {
+                                ProgressView()
+                                    .tint(.white)
+                            } else {
+                                Text("Subscribe")
+                                    .fontWeight(.semibold)
+                            }
+                        }
                         .frame(maxWidth: .infinity)
                         .padding()
                         .background(Color.moodletPrimary)
                         .foregroundStyle(.white)
                         .clipShape(RoundedRectangle(cornerRadius: MoodletTheme.cornerRadius))
-                }
+                    }
+                    .disabled(selectedProductId == nil || isPurchasing || storeManager.isLoading)
 
-                // Restore
-                Button("Restore Purchases") {
-                    // Restore logic
-                }
-                .font(.subheadline)
-                .foregroundStyle(Color.moodletPrimary)
+                    // Restore
+                    Button("Restore Purchases") {
+                        Task {
+                            await storeManager.restorePurchases()
+                        }
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(Color.moodletPrimary)
 
-                // Legal
-                Text("Payment will be charged to your Apple ID account. Subscription automatically renews unless canceled at least 24 hours before the end of the current period.")
-                    .font(.caption2)
-                    .foregroundStyle(Color.moodletTextTertiary)
-                    .multilineTextAlignment(.center)
+                    // Legal
+                    Text("Payment will be charged to your Apple ID account. Subscription automatically renews unless canceled at least 24 hours before the end of the current period.")
+                        .font(.caption2)
+                        .foregroundStyle(Color.moodletTextTertiary)
+                        .multilineTextAlignment(.center)
+                }
             }
             .padding()
         }
         .background(Color.moodletBackground)
         .navigationTitle("Premium")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            if let yearly = storeManager.yearlyProduct {
+                selectedProductId = yearly.id
+            }
+        }
+        .alert("Error", isPresented: $showError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(errorMessage)
+        }
+    }
+
+    private func purchase() {
+        guard let productId = selectedProductId,
+              let product = storeManager.products.first(where: { $0.id == productId }) else {
+            return
+        }
+
+        Task {
+            isPurchasing = true
+            do {
+                _ = try await storeManager.purchase(product)
+                isPurchasing = false
+            } catch StoreError.userCancelled {
+                isPurchasing = false
+            } catch {
+                isPurchasing = false
+                errorMessage = error.localizedDescription
+                showError = true
+            }
+        }
     }
 }
 
-struct PremiumFeatureRow: View {
+struct SettingsPremiumFeatureRow: View {
     let icon: String
     let text: String
 
@@ -964,54 +1063,6 @@ struct PremiumFeatureRow: View {
                 .font(.subheadline)
                 .foregroundStyle(Color.moodletTextPrimary)
         }
-    }
-}
-
-struct PremiumPlanCard: View {
-    let plan: PremiumView.PremiumPlan
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text(plan.rawValue)
-                            .font(.headline)
-                            .foregroundStyle(Color.moodletTextPrimary)
-
-                        if let savings = plan.savings {
-                            Text(savings)
-                                .font(.caption)
-                                .fontWeight(.semibold)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 2)
-                                .background(Color.moodletAccent)
-                                .foregroundStyle(.white)
-                                .clipShape(Capsule())
-                        }
-                    }
-
-                    Text(plan.price)
-                        .font(.subheadline)
-                        .foregroundStyle(Color.moodletTextSecondary)
-                }
-
-                Spacer()
-
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(isSelected ? Color.moodletPrimary : Color.moodletTextTertiary)
-            }
-            .padding()
-            .background(Color.moodletSurface)
-            .clipShape(RoundedRectangle(cornerRadius: MoodletTheme.cornerRadius))
-            .overlay(
-                RoundedRectangle(cornerRadius: MoodletTheme.cornerRadius)
-                    .stroke(isSelected ? Color.moodletPrimary : Color.clear, lineWidth: 2)
-            )
-        }
-        .buttonStyle(.plain)
     }
 }
 

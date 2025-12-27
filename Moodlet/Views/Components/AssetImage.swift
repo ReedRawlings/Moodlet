@@ -25,16 +25,15 @@ struct AssetImage: View {
     }
 }
 
-/// Helper for companion images
+/// Helper for companion base images (single image per species, accessories layered separately)
 struct CompanionImage: View {
     let species: CompanionSpecies
-    let expression: String
     var size: CGFloat = 120
 
-    /// Asset name follows pattern: "Companions/{Species}/{species}_{expression}"
-    /// e.g., "Companions/Cat/cat_happy"
+    /// Asset name follows pattern: "Companions/{species}"
+    /// e.g., "Companions/cat"
     private var assetName: String {
-        "Companions/\(species.displayName)/\(species.rawValue)_\(expression)"
+        "Companions/\(species.rawValue)"
     }
 
     var body: some View {
@@ -45,7 +44,7 @@ struct CompanionImage: View {
                 .frame(width: size, height: size)
         } else {
             // Fallback to placeholder
-            CompanionPlaceholderCircle(species: species, expression: expression, size: size)
+            CompanionPlaceholderCircle(species: species, size: size)
         }
     }
 }
@@ -53,7 +52,6 @@ struct CompanionImage: View {
 /// Simple placeholder circle for companions when no asset exists
 struct CompanionPlaceholderCircle: View {
     let species: CompanionSpecies
-    let expression: String
     var size: CGFloat = 120
 
     var body: some View {
@@ -62,19 +60,8 @@ struct CompanionPlaceholderCircle: View {
                 .fill(Color.moodletPrimary.opacity(0.3))
                 .frame(width: size, height: size)
 
-            Text(speciesEmoji)
+            Text(species.emoji)
                 .font(.system(size: size * 0.5))
-        }
-    }
-
-    private var speciesEmoji: String {
-        switch species {
-        case .cat: return "🐱"
-        case .bear: return "🐻"
-        case .bunny: return "🐰"
-        case .frog: return "🐸"
-        case .fox: return "🦊"
-        case .penguin: return "🐧"
         }
     }
 }
@@ -140,11 +127,11 @@ struct BackgroundImage: View {
 extension AccessoryCategory {
     var folderName: String {
         switch self {
-        case .hat: return "Hats"
+        case .eyes: return "Eyes"
         case .glasses: return "Glasses"
-        case .scarf: return "Scarves"
+        case .hat: return "Hats"
+        case .top: return "Tops"
         case .heldItem: return "HeldItems"
-        case .outfit: return "Outfits"
         }
     }
 }

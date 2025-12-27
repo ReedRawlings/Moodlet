@@ -35,31 +35,42 @@ final class Accessory {
 }
 
 enum AccessoryCategory: String, Codable, CaseIterable, Identifiable {
-    case hat
+    case eyes
     case glasses
-    case scarf
+    case hat
+    case top
     case heldItem = "held_item"
-    case outfit
 
     var id: String { rawValue }
 
     var displayName: String {
         switch self {
-        case .hat: return "Hats"
+        case .eyes: return "Eyes"
         case .glasses: return "Glasses"
-        case .scarf: return "Scarves"
+        case .hat: return "Hats"
+        case .top: return "Tops"
         case .heldItem: return "Held Items"
-        case .outfit: return "Outfits"
         }
     }
 
     var icon: String {
         switch self {
-        case .hat: return "crown.fill"
+        case .eyes: return "eye.fill"
         case .glasses: return "eyeglasses"
-        case .scarf: return "wind"
+        case .hat: return "crown.fill"
+        case .top: return "tshirt.fill"
         case .heldItem: return "hand.raised.fill"
-        case .outfit: return "tshirt.fill"
+        }
+    }
+
+    /// Layer order for rendering (lower = rendered first/behind)
+    var layerOrder: Int {
+        switch self {
+        case .eyes: return 1
+        case .top: return 2
+        case .glasses: return 3
+        case .hat: return 4
+        case .heldItem: return 5
         }
     }
 }

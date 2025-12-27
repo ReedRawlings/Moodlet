@@ -13,6 +13,7 @@ struct HomeView: View {
     @Query(sort: \MoodEntry.timestamp, order: .reverse) private var recentEntries: [MoodEntry]
 
     @Binding var showMoodLogging: Bool
+    @State private var showWardrobe = false
 
     private var companion: Companion? {
         companions.first
@@ -43,6 +44,9 @@ struct HomeView: View {
                     // Companion Section
                     companionSection
 
+                    // Weekly Summary Card (if available)
+                    WeeklySummaryCard()
+
                     // Quick Log Button
                     quickLogButton
 
@@ -62,14 +66,32 @@ struct HomeView: View {
 
     private var companionSection: some View {
         VStack(spacing: MoodletTheme.spacing) {
-            CompanionView(
-                companion: companion,
-                moodTrend: recentMoodTrend,
-                points: userProfile?.totalPoints ?? 0,
-                streak: userProfile?.currentStreak ?? 0,
-                entries: todaysEntries.count
-            )
-            .frame(height: 280)
+            ZStack(alignment: .bottomTrailing) {
+                CompanionView(
+                    companion: companion,
+                    moodTrend: recentMoodTrend,
+                    points: userProfile?.totalPoints ?? 0,
+                    streak: userProfile?.currentStreak ?? 0,
+                    entries: todaysEntries.count
+                )
+                .frame(height: 280)
+
+                // Wardrobe button
+                if companion != nil {
+                    Button {
+                        showWardrobe = true
+                    } label: {
+                        Image(systemName: "tshirt.fill")
+                            .font(.system(size: 16))
+                            .foregroundStyle(.white)
+                            .frame(width: 36, height: 36)
+                            .background(Color.moodletPrimary)
+                            .clipShape(Circle())
+                            .shadow(color: .black.opacity(0.2), radius: 4, y: 2)
+                    }
+                    .padding(12)
+                }
+            }
 
             if let companion = companion {
                 Text(companion.name)
@@ -87,6 +109,9 @@ struct HomeView: View {
                     .font(.title2)
                     .foregroundStyle(Color.moodletTextSecondary)
             }
+        }
+        .sheet(isPresented: $showWardrobe) {
+            WardrobeView()
         }
     }
 

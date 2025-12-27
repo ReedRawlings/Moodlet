@@ -371,7 +371,18 @@ final class Accessory {
 }
 
 enum AccessoryCategory: String, Codable, CaseIterable {
-    case hat, glasses, scarf, held_item, outfit
+    case eyes, glasses, hat, top, heldItem = "held_item"
+
+    /// Layer order for rendering (lower = rendered first/behind)
+    var layerOrder: Int {
+        switch self {
+        case .eyes: return 1      // Base expression layer
+        case .top: return 2       // Clothing layer
+        case .glasses: return 3   // Eyewear layer
+        case .hat: return 4       // Headwear layer
+        case .heldItem: return 5  // Items held (front)
+        }
+    }
 }
 
 @Model
@@ -510,69 +521,77 @@ class StreakService {
 
 ---
 
-## Companion Animation System
+## Companion & Accessory Layering System
+
+### Overview
+
+Each companion is rendered as a **single base image** with **accessories layered on top** in a specific order. This allows users to customize their companion's appearance by unlocking and equipping accessories from the shop.
 
 ### Asset Structure
 
-PNG sequences organized by species and animation state:
-
 ```
-CompanionAnimations/
-├── Cat/
-│   ├── idle_01.png through idle_24.png
-│   ├── blink_01.png through blink_08.png
-│   └── happy_01.png through happy_16.png
-├── Bear/
-│   └── ... (same structure)
-└── ... (other species)
+Assets.xcassets/
+├── Companions/                    # One image per species
+│   ├── cat.imageset/
+│   ├── bear.imageset/
+│   ├── bunny.imageset/
+│   ├── frog.imageset/
+│   ├── fox.imageset/
+│   └── penguin.imageset/
+│
+├── Accessories/                   # Layered on top of companion
+│   ├── Eyes/                      # Expression overlays (happy_eyes, sleepy_eyes, etc.)
+│   ├── Tops/                      # Clothing (cozy_sweater, striped_shirt, etc.)
+│   ├── Glasses/                   # Eyewear (cool_shades, round_glasses, etc.)
+│   ├── Hats/                      # Headwear (cozy_beanie, party_hat, etc.)
+│   └── HeldItems/                 # Items companion holds (coffee_cup, tiny_book, etc.)
+│
+└── Backgrounds/                   # Scene backgrounds
+    └── (various backgrounds)
 ```
 
-### Animation Controller
+### Naming Conventions
+
+| Asset Type | Pattern | Example |
+|------------|---------|---------|
+| Companion | `Companions/{species}` | `Companions/cat` |
+| Accessory | `Accessories/{Category}/{image_name}` | `Accessories/Hats/cozy_beanie` |
+| Background | `Backgrounds/{image_name}` | `Backgrounds/cozy_room` |
+
+### Rendering Order (Layer Stack)
+
+Accessories are rendered in `layerOrder` from lowest to highest:
+
+| Layer | Category | Purpose |
+|-------|----------|---------|
+| 0 | Base Companion | The species base image |
+| 1 | Eyes | Expression overlays (happy, sleepy, heart eyes, etc.) |
+| 2 | Top | Clothing items (sweaters, shirts) |
+| 3 | Glasses | Eyewear items |
+| 4 | Hat | Headwear items |
+| 5 | Held Item | Items the companion holds (rendered in front) |
+
+### Rendering Implementation
 
 ```swift
-class CompanionAnimationController: ObservableObject {
-    @Published var currentFrame: UIImage?
-    
-    private var frames: [UIImage] = []
-    private var currentIndex = 0
-    private var timer: Timer?
-    private let frameRate: TimeInterval = 1.0 / 12.0 // 12 FPS
-    
-    func loadAnimation(species: CompanionSpecies, state: AnimationState) {
-        frames = loadFrames(for: species, state: state)
-        currentIndex = 0
-        startAnimation()
-    }
-    
-    private func loadFrames(for species: CompanionSpecies, state: AnimationState) -> [UIImage] {
-        // Load PNG sequence from bundle
-        var images: [UIImage] = []
-        var index = 1
-        while let image = UIImage(named: "\(species.rawValue)_\(state.rawValue)_\(String(format: "%02d", index))") {
-            images.append(image)
-            index += 1
-        }
-        return images
-    }
-    
-    private func startAnimation() {
-        timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: frameRate, repeats: true) { [weak self] _ in
-            self?.advanceFrame()
-        }
-    }
-    
-    private func advanceFrame() {
-        guard !frames.isEmpty else { return }
-        currentIndex = (currentIndex + 1) % frames.count
-        currentFrame = frames[currentIndex]
-    }
-}
+// In CompanionView.swift
+ZStack {
+    // Base companion image
+    CompanionImage(species: companion.species, size: 140)
 
-enum AnimationState: String {
-    case idle, blink, happy
+    // Equipped accessories layered in order
+    ForEach(companion.equippedAccessories.sorted { $0.category.layerOrder < $1.category.layerOrder }) { accessory in
+        AccessoryImage(accessory: accessory, size: 140)
+    }
 }
 ```
+
+### Design Guidelines for Assets
+
+1. **All assets should be the same dimensions** (e.g., 280x280 for @2x) to layer correctly
+2. **Companions should have transparent areas** where accessories will be placed
+3. **Accessories should have transparent backgrounds** and be positioned to align with companion
+4. **Consider all 6 species** when designing accessories - they should work across body shapes
 
 ---
 

@@ -34,6 +34,7 @@ enum AppTab: Int, CaseIterable, Identifiable {
 }
 
 struct MainTabView: View {
+    @Environment(\.appState) private var appState
     @State private var selectedTab: AppTab = .home
     @State private var showMoodLogging = false
 
@@ -58,11 +59,29 @@ struct MainTabView: View {
         .tint(.moodletPrimary)
         .overlay {
             if showMoodLogging {
-                MoodLoggingOverlay(isPresented: $showMoodLogging)
-                    .transition(.opacity)
+                MoodLoggingOverlay(
+                    isPresented: $showMoodLogging,
+                    preSelectedEmotion: appState.pendingNotificationEmotion,
+                    onDismiss: {
+                        // Clear the pending emotion after dismissal
+                        appState.pendingNotificationEmotion = nil
+                    }
+                )
+                .transition(.opacity)
             }
         }
         .animation(.easeInOut(duration: 0.25), value: showMoodLogging)
+        .onChange(of: appState.showMoodLogging) { _, shouldShow in
+            // Sync with appState (for notification-triggered opening)
+            if shouldShow {
+                showMoodLogging = true
+                appState.showMoodLogging = false
+            }
+        }
+        .onChange(of: appState.selectedTab) { _, newTab in
+            // Sync tab selection from appState (for notification navigation)
+            selectedTab = newTab
+        }
     }
 }
 

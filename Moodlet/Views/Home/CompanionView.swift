@@ -14,16 +14,6 @@ struct CompanionView: View {
 
     @State private var isAnimating = false
 
-    private var companionExpression: String {
-        guard let mood = moodTrend else { return "neutral" }
-        switch mood {
-        case .happy: return "happy"
-        case .content: return "content"
-        case .neutral: return "neutral"
-        case .annoyed: return "tired"
-        case .sad: return "sad"
-        }
-    }
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -103,22 +93,18 @@ struct CompanionView: View {
             VStack {
                 Spacer()
 
-                // Companion image with fallback to placeholder
+                // Companion with layered accessories
                 ZStack {
-                    CompanionImage(
-                        species: companion.species,
-                        expression: companionExpression,
-                        size: 140
-                    )
-                    .scaleEffect(isAnimating ? 1.02 : 1.0)
-                    .offset(y: isAnimating ? -4 : 0)
+                    // Base companion image
+                    CompanionImage(species: companion.species, size: 180)
 
-                    // Equipped accessories overlay
-                    ForEach(companion.equippedAccessories) { accessory in
-                        AccessoryImage(accessory: accessory, size: 60)
-                            .offset(y: -50) // Position above companion (adjust per accessory type)
+                    // Equipped accessories layered in order
+                    ForEach(companion.equippedAccessories.sorted { $0.category.layerOrder < $1.category.layerOrder }) { accessory in
+                        AccessoryImage(accessory: accessory, size: 180)
                     }
                 }
+                .scaleEffect(isAnimating ? 1.02 : 1.0)
+                .offset(y: isAnimating ? -4 : 0)
 
                 Spacer()
             }
